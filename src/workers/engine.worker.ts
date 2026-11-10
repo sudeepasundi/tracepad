@@ -1,5 +1,6 @@
 // Engine worker: runs the Rust/WASM engine, or the TypeScript twin when
 // WebAssembly is unavailable (for example blocked by an iframe's CSP).
+import { bigAppend, bigDrop, bigFilter, bigFind, bigGroups, bigOpen, bigText } from '../engine/bigService';
 import type { FilterSpec } from '../engine/logfilter';
 import { logDrop, logFilter, logGroups, logParse } from '../engine/logService';
 import { scanTs } from '../engine/scan';
@@ -11,15 +12,29 @@ export type EngineRequest =
   | { id: number; op: 'log.parse'; key: string; bytes: ArrayBuffer; year: number }
   | { id: number; op: 'log.filter'; key: string; spec: FilterSpec }
   | { id: number; op: 'log.groups'; key: string }
-  | { id: number; op: 'log.drop'; key: string };
+  | { id: number; op: 'log.drop'; key: string }
+  | { id: number; op: 'big.open'; key: string; file: Blob; start: number; encoding: string; year: number; chunk?: number }
+  | { id: number; op: 'big.append'; key: string; file: Blob }
+  | { id: number; op: 'big.text'; key: string; from: number; to: number }
+  | { id: number; op: 'big.filter'; key: string; spec: FilterSpec }
+  | { id: number; op: 'big.find'; key: string; source: string; flags: string; limit: number }
+  | { id: number; op: 'big.groups'; key: string };
 
-export type EngineResponse = { id: number; ok: true; result: unknown } | { id: number; ok: false; error: string };
+export type EngineResponse = { id: number; ok: true; result: unknown } | { id: number; ok: false; error: string } | { id: number; progress: [number, number] };
 
 const ctx = self as unknown as { postMessage(m: EngineResponse, transfer?: Transferable[]): void; onmessage: ((e: MessageEvent<EngineRequest>) => void) | null };
 let wasm: WasmEngine | null = null;
 
 ctx.onmessage = async (e) => {
   const m = e.data;
+  // At most ~10 progress messages a second.
+  let last = 0;
+  const progress = (done: number, total: number) => {
+    const now = Date.now();
+    if (now - last < 90 && done < total) return;
+    last = now;
+    ctx.postMessage({ id: m.id, progress: [done, total] });
+  };
   try {
     let result: unknown;
     const transfer: Transferable[] = [];
@@ -59,7 +74,38 @@ ctx.onmessage = async (e) => {
         break;
       case 'log.drop':
         logDrop(m.key);
+        bigDrop(m.key);
         result = true;
+        break;
+      case 'big.open': {
+        const r = await bigOpen(m.key, m.file, m.start, m.encoding, wasm, m.year, m.chunk, progress);
+        result = r;
+        transfer.push(r.level.buffer, r.flags.buffer, r.ts.buffer, r.entryLines.buffer, r.summary.buffer);
+        break;
+      }
+      case 'big.append': {
+        const r = await bigAppend(m.key, m.file);
+        result = r;
+        if (r) transfer.push(r.level.buffer, r.flags.buffer, r.ts.buffer, r.entryLines.buffer, r.summary.buffer);
+        break;
+      }
+      case 'big.text':
+        result = await bigText(m.key, m.from, m.to);
+        break;
+      case 'big.filter': {
+        const r = await bigFilter(m.key, m.spec, progress);
+        result = r;
+        if (r) transfer.push(r.mask.buffer);
+        break;
+      }
+      case 'big.find': {
+        const r = await bigFind(m.key, m.source, m.flags, m.limit, progress);
+        result = r;
+        transfer.push(r.lines.buffer);
+        break;
+      }
+      case 'big.groups':
+        result = await bigGroups(m.key, progress);
         break;
     }
     ctx.postMessage({ id: m.id, ok: true, result }, transfer);

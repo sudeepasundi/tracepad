@@ -17,6 +17,14 @@ export interface Tab {
   isLog?: boolean;
   /** true/false = the user's explicit choice; undefined = detect automatically. */
   forceLog?: boolean;
+  /** Large file: read-only, shown by the disk-backed viewer instead of the editor. */
+  big?: boolean;
+  /** Large file of which only the end is shown. */
+  tailOnly?: boolean;
+  /** Keep the end of a linked file in view as it grows (tail -f). */
+  follow?: boolean;
+  /** The linked file has disappeared from disk. */
+  missing?: boolean;
   /** Restored linked file waiting for permission; content not loaded yet. */
   locked?: boolean;
   lastUsed: number;

@@ -121,3 +121,23 @@ test('the log bar fits: timeline, chips and filters without sideways scrolling',
   expect((await box(page.locator('.tp-editor-area'))).height).toBeGreaterThan(380);
   await fits(page);
 });
+
+test('the large-file viewer works on a phone: fits, scrolls by touch-sized steps, filters', async ({ page }) => {
+  await page.evaluate(() => localStorage.setItem('tracepad.settings', JSON.stringify({ largeFileMB: 0.001 })));
+  await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined }));
+  await page.reload();
+  await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+  const text = Array.from({ length: 3000 }, (_, i) => `2026-03-14 10:${String(Math.floor(i / 60) % 60).padStart(2, '0')}:${String(i % 60).padStart(2, '0')} ${i % 50 === 0 ? 'ERROR' : 'INFO'} com.acme.Job - step ${i}`).join('\n') + '\n';
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Open a file', exact: true }).tap();
+  await (await chooser).setFiles([{ name: 'phone.log', mimeType: 'text/plain', buffer: Buffer.from(text) }]);
+  await expect(page.locator('.tp-big[data-status="ready"]')).toBeVisible();
+  const view = await box(page.locator('.tp-big'));
+  expect(view.x + view.width).toBeLessThanOrEqual(W + 0.5);
+  expect(view.height).toBeGreaterThan(380);
+  await expect(page.locator('.tp-big-row').first().locator('.tp-big-text')).toContainText('step 0');
+  await page.locator('.tp-chip', { hasText: 'ERROR' }).tap();
+  await expect(page.getByTestId('filter-count')).toHaveText('60 of 3,000 entries');
+  await expect(page.locator('.tp-big-row').nth(1).locator('.tp-big-text')).toContainText('step 50');
+  await fits(page);
+});

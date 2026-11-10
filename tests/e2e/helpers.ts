@@ -21,6 +21,8 @@ export async function openSample(root: Root): Promise<void> {
   await root.getByRole('button', { name: /Try the sample log/ }).click();
   await expect(root.getByRole('tab', { name: /sample-spring-boot\.log/ })).toBeVisible();
   await expect(root.locator('.cm-line').first()).toBeVisible();
+  // The log bar appears a moment later and moves the editor down: wait for the layout to settle.
+  await expect(root.locator('.tp-logbar[data-log-status="ready"]')).toBeVisible();
 }
 
 interface Hook {

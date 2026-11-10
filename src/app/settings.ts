@@ -17,6 +17,12 @@ export interface Settings {
   /** Stack frames from this package are highlighted, e.g. com.mycompany. */
   ownPackage: string;
   highlights: HighlightRule[];
+  /** Files larger than this open in the read-only large-file viewer. */
+  largeFileMB: number;
+  /** Above this size, offer to show only the end of the file. */
+  tailAskMB: number;
+  /** How much of the end is shown then. */
+  tailMB: number;
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -45,6 +51,9 @@ export const DEFAULTS: Settings = {
   filesSort: 'order',
   ownPackage: '',
   highlights: [],
+  largeFileMB: 64,
+  tailAskMB: 1024,
+  tailMB: 500,
 };
 
 const KEY = 'tracepad.settings';

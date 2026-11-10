@@ -9,6 +9,8 @@ import { Rail, Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { TopBar } from './TopBar';
 import { LogBar } from './LogBar';
+import { BigViewer } from '../viewer/BigViewer';
+import { initWatcher } from '../files/watch';
 import { MenuHost } from './Menu';
 import { initLogs } from '../app/logs';
 import { Locked, Welcome } from './Welcome';
@@ -26,6 +28,7 @@ export function App() {
       if (tabs.value.length === 0) newTab();
       initSessionPersistence();
       initLogs();
+      initWatcher();
       installLaunchQueue();
       document.documentElement.dataset.ready = 'true';
     })();
@@ -41,6 +44,7 @@ export function App() {
           <LogBar />
           <div class="tp-editor-area">
             <div class="tp-editor-host" ref={host} />
+            <BigViewer />
             <Welcome />
             <Locked />
             <FindBar />

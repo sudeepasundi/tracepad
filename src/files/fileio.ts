@@ -6,7 +6,9 @@ import { scanBytes } from '../engine/client';
 import { ask, toast } from '../app/feedback';
 import { activeId, crossOriginFramed, dropActive, patchTab, tabs } from '../app/state';
 import { activateTab, addTab } from '../app/tabs';
+import { largeLimitBytes, openBigFile } from './bigopen';
 import { decodeBytes, detectEncoding, encodeText, type Encoding } from './encoding';
+import { rebase } from './watch';
 
 /** Above this size a file needs the read-only large-file viewer (arrives in 0.4). */
 export const MAX_EDITABLE_BYTES = 64 * 1024 * 1024;
@@ -80,6 +82,10 @@ export interface Loaded {
 }
 
 export async function openFile(file: File, handle?: FileSystemFileHandle): Promise<void> {
+  if (file.size > largeLimitBytes()) {
+    await openBigFile(file, handle);
+    return;
+  }
   const loaded = await readForTab(file);
   if (loaded) addTab({ name: file.name, handle, ...loaded });
 }
@@ -151,11 +157,16 @@ async function writeHandle(handle: FileSystemFileHandle, bytes: Uint8Array): Pro
 export async function saveTab(id: number | null = activeId.value): Promise<boolean> {
   const tab = tabs.value.find((t) => t.id === id);
   if (!tab || id == null) return false;
+  if (tab.big) {
+    toast('Large files are opened read-only, so there is nothing to save.', { kind: 'info' });
+    return false;
+  }
   if (!tab.handle) return saveTabAs(id);
   const bytes = bytesFor(id);
   if (!bytes) return false;
   try {
     await writeHandle(tab.handle, bytes);
+    rebase(id);
     markSaved(id);
     toast(`Saved ${tab.name}`, { kind: 'ok', ms: 1600 });
     return true;
@@ -168,6 +179,10 @@ export async function saveTab(id: number | null = activeId.value): Promise<boole
 export async function saveTabAs(id: number | null = activeId.value): Promise<boolean> {
   const tab = tabs.value.find((t) => t.id === id);
   if (!tab || id == null) return false;
+  if (tab.big) {
+    toast('Large files are opened read-only, so there is nothing to save.', { kind: 'info' });
+    return false;
+  }
   if (window.showSaveFilePicker && !crossOriginFramed) {
     let handle: FileSystemFileHandle | null = null;
     try {
@@ -185,6 +200,7 @@ export async function saveTabAs(id: number | null = activeId.value): Promise<boo
         return false;
       }
       const lang = languageName(handle.name);
+      rebase(id);
       patchTab(id, { handle, name: handle.name, untitled: false, lang });
       setTabLanguage(id, lang);
       markSaved(id);

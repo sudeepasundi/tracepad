@@ -1,6 +1,7 @@
-import { createDoc, docLength, focusEditor, removeDoc, replaceDoc, setTabLanguage, showTab } from '../editor/editor';
+import { createDoc, docLength, focusEditor, removeDoc, replaceDoc, setNavigator, setTabLanguage, showTab } from '../editor/editor';
 import { languageName } from '../editor/languages';
 import type { Encoding } from '../files/encoding';
+import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab, saveTab } from '../files/fileio';
 import { ask, toast } from './feedback';
 import { activeId, menu, newTabId, nextUntitledName, patchTab, renaming, tabs, type MenuItem, type Tab } from './state';
@@ -20,12 +21,15 @@ export interface NewTab {
   locked?: boolean;
   lastUsed?: number;
   uid?: string;
+  /** Large file: the editor holds an empty placeholder; the viewer shows the file. */
+  big?: boolean;
+  tailOnly?: boolean;
 }
 
 export function addTab(spec: NewTab): number {
   const id = newTabId();
   const lang = languageName(spec.name);
-  createDoc(id, spec.text, lang, { dirty: spec.restoredDirty, readOnly: spec.locked });
+  createDoc(id, spec.text, lang, { dirty: spec.restoredDirty, readOnly: spec.locked || spec.big });
   const tab: Tab = {
     id,
     uid: spec.uid ?? `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`,
@@ -37,6 +41,8 @@ export function addTab(spec: NewTab): number {
     lang,
     dirty: spec.restoredDirty ?? false,
     locked: spec.locked,
+    big: spec.big,
+    tailOnly: spec.tailOnly,
     lastUsed: spec.lastUsed ?? Date.now(),
   };
   // A pristine, empty "untitled" tab is replaced rather than left behind.
@@ -57,6 +63,8 @@ export function activateTab(id: number): void {
   activeId.value = id;
   patchTab(id, { lastUsed: Date.now() });
   showTab(id);
+  // Leaving a large-file tab: keyboard focus goes back to the editor, not to the viewer that is about to go.
+  if (!tabs.value.find((t) => t.id === id)?.big) setNavigator(null);
   focusEditor();
 }
 
@@ -233,7 +241,15 @@ export async function unlockTab(id: number): Promise<void> {
       toast(`Access to ${tab.name} was not allowed, so it stays closed.`, { kind: 'info' });
       return;
     }
-    const loaded = await readForTab(await tab.handle.getFile());
+    const file = await tab.handle.getFile();
+    if (file.size > largeLimitBytes()) {
+      // Too large for the editor: reopen it in the large-file viewer.
+      const handle = tab.handle;
+      await closeTab(id);
+      await openBigFile(file, handle);
+      return;
+    }
+    const loaded = await readForTab(file);
     if (!loaded) return;
     replaceDoc(id, loaded.text, tab.lang);
     patchTab(id, { locked: false, encoding: loaded.encoding, eol: loaded.eol, dirty: false });

@@ -15,6 +15,7 @@ import { effect } from '@preact/signals';
 import type { Text } from '@codemirror/state';
 import { docOf, docTick } from '../editor/editor';
 import type { Encoding } from '../files/encoding';
+import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab } from '../files/fileio';
 import { toast } from './feedback';
 import { idbGet, idbSet } from './idb';
@@ -41,6 +42,7 @@ interface StoredTab {
   text?: string;
   dirty: boolean;
   lastUsed: number;
+  big?: boolean;
 }
 
 interface StoredSession {
@@ -80,6 +82,11 @@ function snapshot(forJournal: boolean): StoredSession {
     const base: StoredTab = { uid: t.uid, name: t.name, untitled: t.untitled, encoding: t.encoding, eol: t.eol, lastUsed: t.lastUsed, dirty: false };
     if (forJournal) base.linked = !!t.handle;
     else base.handle = t.handle;
+    if (t.big) {
+      // A large file comes back from its handle; a one-time snapshot cannot be kept.
+      if (t.handle) out.push({ ...base, big: true });
+      continue;
+    }
     if (t.locked || (t.handle && !t.dirty)) {
       out.push(base);
       continue;
@@ -139,7 +146,9 @@ async function restoreOne(s: StoredTab): Promise<number | null> {
   try {
     const permission = (await s.handle.queryPermission?.({ mode: 'read' })) ?? 'granted';
     if (permission !== 'granted') return addTab({ ...meta, text: '', locked: true });
-    const loaded = await readForTab(await s.handle.getFile(), true);
+    const file = await s.handle.getFile();
+    if (file.size > largeLimitBytes()) return openBigFile(file, s.handle, { activate: false, uid: s.uid, lastUsed: s.lastUsed });
+    const loaded = await readForTab(file, true);
     return loaded ? addTab({ ...meta, ...loaded }) : null;
   } catch {
     toast(`${s.name} could not be reopened. It may have been moved or deleted.`, { kind: 'error' });

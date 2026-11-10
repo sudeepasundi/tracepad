@@ -2,6 +2,19 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.4.0
+
+Large files and live files.
+
+- Files over 64 MB now open, in a read-only viewer that never loads the file into memory. A 500 MB log is ready in a few seconds and scrolls instantly. The timeline, level colours, every filter, F8, Go to line and Log insights work the same as for small files.
+- Find (Ctrl+F) searches the whole file on disk and steps through the matching lines.
+- Click a line number, Shift+click another, and Ctrl+C copies that range.
+- Files over 1 GB ask first: open the last 500 MB (the recent entries, quick) or all of it. Above 3 GB only the last part can be opened.
+- Linked files that change on disk now update by themselves. New lines are added in place without moving your view, unless you were at the end, in which case the view follows. A rewritten file is reloaded and undo brings the old text back. If you have unsaved edits you are asked whether to reload or keep your version. If the file disappears you get one notice.
+- Follow (status bar, or "Follow file" in the palette) keeps the end of a growing file in view, like tail -f.
+- Linked large files come back after a reload like other tabs.
+- Limits: large files are read-only; UTF-8 and Latin-1 only; no highlight rules, minimap or stack-trace folding there yet. A text filter on a file that is still growing re-reads the file each time it grows.
+
 ## 0.3.0
 
 Logs.

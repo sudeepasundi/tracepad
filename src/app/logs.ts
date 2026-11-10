@@ -3,9 +3,10 @@
 import { effect, signal } from '@preact/signals';
 import type { Text } from '@codemirror/state';
 import { foldAll, unfoldAll } from '@codemirror/language';
-import { dispatchToTab, docOf, docTick, getView, goToLine } from '../editor/editor';
+import { currentLine, dispatchToTab, docOf, docTick, getView, goToLine } from '../editor/editor';
 import { refreshLog, setHidden, setLogIndex } from '../editor/log';
-import { dropLog, filterLog, groupLog, parseLog, type PageIndex } from '../engine/client';
+import { dropLog, filterBig, filterLog, groupBig, groupLog, parseLog, type PageIndex } from '../engine/client';
+import { dropBig, setBigBusy, setBigMask } from './big';
 import { EMPTY_FILTER, isEmptyFilter, type ErrorGroup, type FilterSpec } from '../engine/logfilter';
 import { FLAG_ENTRY, FORMAT_NAMES, LV } from '../engine/logparse';
 import { toast } from './feedback';
@@ -80,7 +81,7 @@ function detach(tab: Tab): void {
 async function analyse(id: number): Promise<void> {
   const tab = tabs.value.find((t) => t.id === id);
   const doc = docOf(id);
-  if (!tab || !doc || tab.locked) return;
+  if (!tab || !doc || tab.locked || tab.big) return;
   if (analysed.get(id) === doc) return;
   analysed.set(id, doc);
   if (tab.forceLog === false || !(tab.forceLog || CANDIDATE_LANGS.has(tab.lang))) {
@@ -131,6 +132,46 @@ async function analyse(id: number): Promise<void> {
   if (logGroups.value?.tabId === id) void loadGroups(id);
 }
 
+/** A large-file tab finished (re)indexing: use its index like any other log's. */
+export function attachBigLog(id: number, ix: PageIndex): void {
+  const tab = tabs.value.find((t) => t.id === id);
+  if (!tab) return;
+  keys.set(id, tab.uid);
+  const isLog = tab.forceLog !== false && (tab.forceLog || tab.lang === 'Log' || looksLikeLog(ix));
+  if (!isLog) {
+    indexes.delete(id);
+    masks.delete(id);
+    setInfo(id, null);
+    if (tab.isLog) patchTab(id, { isLog: false });
+    return;
+  }
+  const previous = logInfo.value[id];
+  indexes.set(id, ix);
+  const s = ix.summary;
+  version++;
+  setInfo(id, {
+    status: 'ready',
+    format: FORMAT_NAMES[s[2]] || 'No timestamps found',
+    lines: s[0],
+    entries: s[1],
+    counts: Array.from(s.subarray(6, 13)),
+    firstTs: s[4],
+    lastTs: s[5],
+    stamped: s[14],
+    prefixed: s[3],
+    shown: previous?.shown ?? null,
+    version,
+  });
+  if (!tab.isLog) patchTab(id, { isLog: true });
+  if (!previous) void applyFilterTo(id);
+  if (logGroups.value?.tabId === id) void loadGroups(id);
+}
+
+/** Applies the current filter again (the file grew). */
+export function refilter(id: number): Promise<void> {
+  return applyFilterTo(id);
+}
+
 let filterRun = 0;
 
 async function applyFilterTo(id: number): Promise<void> {
@@ -141,22 +182,29 @@ async function applyFilterTo(id: number): Promise<void> {
   const run = ++filterRun;
   if (isEmptyFilter(spec)) {
     if (masks.delete(id) || info.shown !== null || info.error) {
-      dispatchToTab(id, { effects: setHidden.of(null) });
+      if (tab.big) setBigMask(id, null);
+      else dispatchToTab(id, { effects: setHidden.of(null) });
       setInfo(id, { ...info, shown: null, error: undefined });
     }
     return;
   }
-  const result = await filterLog(tab.uid, spec);
+  if (tab.big) setBigBusy(id, 0);
+  const result = tab.big ? await filterBig(tab.uid, spec, (done, total) => run === filterRun && setBigBusy(id, total ? done / total : 1)) : await filterLog(tab.uid, spec);
   const current = logInfo.value[id];
-  if (!result || run !== filterRun || !current || current.version !== info.version) return;
+  if (!result || run !== filterRun || !current || current.version !== info.version) {
+    if (tab.big && run === filterRun) setBigBusy(id, null);
+    return;
+  }
   if (result.error) {
     masks.delete(id);
-    dispatchToTab(id, { effects: setHidden.of(null) });
+    if (tab.big) setBigMask(id, null);
+    else dispatchToTab(id, { effects: setHidden.of(null) });
     setInfo(id, { ...current, shown: null, error: result.error });
     return;
   }
   masks.set(id, result.mask);
-  dispatchToTab(id, { effects: setHidden.of(result.mask) });
+  if (tab.big) setBigMask(id, result.mask);
+  else dispatchToTab(id, { effects: setHidden.of(result.mask) });
   setInfo(id, { ...current, shown: result.shownEntries, error: undefined });
 }
 
@@ -195,16 +243,13 @@ export async function loadGroups(tabId: number): Promise<void> {
     logGroups.value = null;
     return;
   }
-  const groups = await groupLog(tab.uid);
+  const groups = tab.big ? await groupBig(tab.uid) : await groupLog(tab.uid);
   logGroups.value = { tabId, version: info.version, groups };
 }
 
 // ------------------------------------------------------------------ navigation
 
-function cursorLine(): number {
-  const s = getView().state;
-  return s.doc.lineAt(s.selection.main.head).number;
-}
+const cursorLine = currentLine;
 
 /** F8 / Shift+F8: next or previous ERROR/FATAL entry that is not filtered out. */
 export function jumpToError(dir: 1 | -1): void {
@@ -315,6 +360,7 @@ export function initLogs(): void {
       indexes.delete(id);
       masks.delete(id);
       analysed.delete(id);
+      dropBig(id);
       if (logInfo.peek()[id]) setInfo(id, null);
     }
   });

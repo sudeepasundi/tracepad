@@ -4,9 +4,11 @@ import { installKeyboard } from './app/commands';
 import { toast } from './app/feedback';
 import { hasUnstoredChanges } from './app/session';
 import { initSettings } from './app/settings';
-import { crossOriginFramed, tabs } from './app/state';
+import { activeId, crossOriginFramed, tabs } from './app/state';
 import { getView } from './editor/editor';
 import { hiddenField } from './editor/log';
+import { getBig, rowCount } from './app/big';
+import { checkDisk } from './files/watch';
 import { startEngine } from './engine/client';
 import { installDrop } from './files/fileio';
 import { App } from './ui/App';
@@ -37,6 +39,12 @@ void startEngine();
     return s.doc.lineAt(s.selection.main.head).number;
   },
   lineText: (n: number) => getView().state.doc.line(n).text,
+  /** Check linked files for changes on disk right now (normally every second or two). */
+  checkDisk,
+  big: () => {
+    const b = getBig(activeId.value);
+    return b ? { status: b.status, lines: b.lines, rows: rowCount(b), top: b.top, cursor: b.cursor + 1, size: b.size, cached: b.cache.size } : null;
+  },
 };
 
 window.addEventListener('tp-error', (e) => toast(String((e as CustomEvent).detail), { kind: 'error' }));

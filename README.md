@@ -6,10 +6,12 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 Tracepad is being built in milestones. This page lists what works today and what is planned; the [changelog](CHANGELOG.md) has the detail for each release.
 
-## What works today (0.3)
+## What works today (0.4)
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
 - **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
+- **Large files**: anything over 64 MB opens in a read-only viewer that reads from disk on demand, so hundreds of megabytes open in seconds with the same timeline, filters and search. Above 1 GB you can open just the last 500 MB.
+- **Live files**: linked files update when they change on disk (appended lines in place, rewrites reloaded, a prompt if you have unsaved edits), and Follow keeps the end in view like `tail -f`.
 - **Session restore**: tabs, their order and unsaved text come back after a reload or restart; linked files are re-read from disk (after a browser restart they ask for access once).
 - **Tab management**: rename (double-click, F2 or right-click; renames the file on disk in Chrome and Edge), drag to reorder, a right-click menu, and an Open files list (`Ctrl+Shift+E`) with filter, sort and keyboard navigation.
 - **Encodings**: UTF-8, UTF-8 with BOM, UTF-16 LE/BE and Latin-1 are detected and written back unchanged. Line endings (LF/CRLF) are kept and can be switched from the status bar. Binary files are refused.
@@ -24,13 +26,14 @@ Tracepad is being built in milestones. This page lists what works today and what
 
 | Version | Adds |
 |---|---|
-| 0.4 | Read-only viewer for very large logs (hundreds of MB), follow file, reload on change |
 | 0.5 | Extract to table, automatic tables from log patterns, results panel |
 | 0.6 | Pasted tables to Markdown, Markdown preview |
 | 0.7 | Split view with snap layouts |
 | 0.8 | Compare (diff) view, Copilot hand-off with secret masking |
 
-Files over 64 MB are not opened yet; that needs the large-file viewer in 0.4.
+### How large is large?
+
+Measured on a laptop with a generated Spring Boot log: 500 MB (2.5 million lines) indexed in about 4 seconds; a level filter took under 1 second, a text filter and a whole-file search about 2 seconds each. The index needs roughly 50 bytes of memory per line (about 120 MB for that file), so files up to about 1 GB are comfortable. Above 1 GB Tracepad offers to open the last 500 MB instead, and above 3 GB that is the only choice. Large files are read-only.
 
 ## Privacy
 

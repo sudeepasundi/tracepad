@@ -2,7 +2,7 @@
 // These are looked at before every release; the automated appearance checks
 // live in tests/e2e/appearance.spec.ts.
 import { test } from '@playwright/test';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { openApp, openSample } from '../e2e/helpers';
 import { clearDisk, openLinked, useLinkedPicker, writeDisk } from '../e2e/linked';
 
@@ -113,6 +113,33 @@ for (const vp of VIEWPORTS) {
       await page.reload();
       await page.waitForTimeout(500);
       await shot('11-locked');
+    });
+  }
+}
+
+const BIG_TEXT = readFileSync('src/assets/sample-spring.log', 'utf8').repeat(30);
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots large file ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined }));
+      await openApp(page, { ...th.settings, largeFileMB: 0.001 });
+      const chooser = page.waitForEvent('filechooser');
+      await page.getByRole('button', { name: 'Open a file', exact: true }).click();
+      await (await chooser).setFiles([{ name: 'order-service-2026-03-14.log', mimeType: 'text/plain', buffer: Buffer.from(BIG_TEXT) }]);
+      await page.locator('.tp-big[data-status="ready"]').waitFor();
+      await page.locator('.tp-big').focus();
+      await page.keyboard.press('F8');
+      await page.waitForTimeout(500);
+      await shot('12-big');
+      await page.keyboard.press('Control+F');
+      await page.getByRole('textbox', { name: 'Find', exact: true }).fill('timed out');
+      await page.locator('.tp-find-count', { hasText: 'lines' }).waitFor();
+      await page.keyboard.press('Enter');
+      await page.waitForTimeout(500);
+      await shot('13-big-find');
     });
   }
 }

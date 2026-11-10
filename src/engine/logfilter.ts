@@ -25,6 +25,11 @@ export function isEmptyFilter(f: FilterSpec): boolean {
   return f.levels === null && !f.text && f.patterns.every((p) => !p.trim()) && !f.logger.trim() && !f.trace.trim() && !f.from.trim() && !f.to.trim();
 }
 
+/** True when the filter has to look at the text of the log, not just at the index. */
+export function needsBytes(f: FilterSpec): boolean {
+  return !!f.text || f.patterns.some((p) => p.trim()) || !!f.logger.trim() || !!f.trace.trim();
+}
+
 export interface FilterResult {
   /** 1 = line is shown. */
   mask: Uint8Array;
@@ -128,6 +133,9 @@ export function applyFilter(bytes: Uint8Array, ix: LogIndex, f: FilterSpec): Fil
   if (levelOk) for (const l of f.levels!) levelOk[l] = 1;
   const logger = f.logger.trim() ? lowerBytes(f.logger) : null;
   const trace = f.trace.trim() ? lowerBytes(f.trace) : null;
+  // Plain, case-insensitive ASCII text is searched in the bytes directly: no decoding.
+  const textBytes = f.text && !f.regex && !f.caseSensitive && /^[\x20-\x7e]+$/.test(f.text) ? new TextEncoder().encode(f.text.toLowerCase()) : null;
+  if (textBytes) textTest = null;
   const needText = textTest !== null || patternTests.length > 0;
   const decoder = new TextDecoder();
   const mask = new Uint8Array(lines);
@@ -152,6 +160,10 @@ export function applyFilter(bytes: Uint8Array, ix: LogIndex, f: FilterSpec): Fil
       const hasField = ix.fields[o + 6] > 0;
       const start = ix.lineStart[firstLine];
       if (hasField ? !includesCi(bytes, ix.fields[o + 5], ix.fields[o + 6], trace) : !includesCi(bytes, start, lineEnd(firstLine) - start, trace)) return false;
+    }
+    if (textBytes) {
+      const s = ix.lineStart[firstLine];
+      if (!includesCi(bytes, s, lineEnd(lastLine) - s, textBytes)) return false;
     }
     if (needText) {
       const text = decoder.decode(bytes.subarray(ix.lineStart[firstLine], lineEnd(lastLine)));
@@ -206,10 +218,20 @@ export function normaliseMessage(s: string): string {
 }
 
 export function groupErrors(bytes: Uint8Array, ix: LogIndex, minLevel: number = LV.WARN, maxGroups = 300): ErrorGroup[] {
+  const groups = new Map<string, ErrorGroup>();
+  collectGroups(groups, bytes, ix, 0, minLevel);
+  return finishGroups(groups, maxGroups);
+}
+
+export function finishGroups(groups: Map<string, ErrorGroup>, maxGroups = 300): ErrorGroup[] {
+  return [...groups.values()].sort((a, b) => b.level - a.level || b.count - a.count || a.firstLine - b.firstLine).slice(0, maxGroups);
+}
+
+/** Adds the errors of one stretch of a log to `groups`; `lineBase` is the stretch's first line (0-based) in the file. */
+export function collectGroups(groups: Map<string, ErrorGroup>, bytes: Uint8Array, ix: LogIndex, lineBase: number, minLevel: number = LV.WARN): void {
   const lines = ix.level.length;
   const entryCount = ix.fields.length / FIELD_STRIDE;
   const decoder = new TextDecoder();
-  const groups = new Map<string, ErrorGroup>();
   const lineEnd = (line: number) => {
     let e = line + 1 < lines ? ix.lineStart[line + 1] - 1 : bytes.length;
     if (e > 0 && bytes[e - 1] === 13) e--;
@@ -234,9 +256,8 @@ export function groupErrors(bytes: Uint8Array, ix: LogIndex, minLevel: number = 
     const g = groups.get(key);
     if (g) {
       g.count++;
-      g.lastLine = first + 1;
-      if (g.lines.length < 500) g.lines.push(first + 1);
-    } else groups.set(key, { level, count: 1, firstLine: first + 1, lastLine: first + 1, sample: message.trim(), exception, lines: [first + 1] });
+      g.lastLine = lineBase + first + 1;
+      if (g.lines.length < 500) g.lines.push(lineBase + first + 1);
+    } else if (groups.size < 5000) groups.set(key, { level, count: 1, firstLine: lineBase + first + 1, lastLine: lineBase + first + 1, sample: message.trim(), exception, lines: [lineBase + first + 1] });
   }
-  return [...groups.values()].sort((a, b) => b.level - a.level || b.count - a.count || a.firstLine - b.firstLine).slice(0, maxGroups);
 }

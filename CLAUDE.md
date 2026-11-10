@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 3 (0.1.0, 0.2.0, 0.3.0) are shipped; next is 0.4 (read-only large-file viewer, follow file, reload on change).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 4 (0.1.0 to 0.4.0) are shipped; next is 0.5 (extract to table, auto tables from log templates, results panel).
 
 ## Stack
 
@@ -26,9 +26,11 @@ src/main.tsx            wiring, service-worker registration, window.__tracepad t
 src/app/                state (signals), settings, themes, commands + layers, tabs, feedback, storage,
                         session (restore) + idb
 src/editor/             CodeMirror setup, languages, minimap, log.ts (colours, hidden lines, folding, highlight rules)
-src/files/              encodings, open/save/drag-drop
+src/files/              encodings, open/save/drag-drop, bigopen (large files), watch (changes on disk)
+src/viewer/             BigViewer (virtual, read-only large-file viewer) and its find box
 src/engine/             client (worker + fallbacks), wasm wrapper, TypeScript twins (scan, logparse),
-                        logfilter (filters, grouping; TypeScript only), logService (worker-side store)
+                        logfilter (filters, grouping; TypeScript only), logService (worker-side store),
+                        bigindex (chunked disk-backed index) + bigService
 src/workers/            engine worker
 src/ui/                 Preact components
 src/styles/app.css      all styles
@@ -84,7 +86,12 @@ Release checklist (every change ships as a version):
 - **Git Bash mangles `--prefix /tracepad/`**; prefix manual runs of `scripts/serve.mjs` with `MSYS_NO_PATHCONV=1`.
 - **Shell heredocs mangle backslashes** in patch scripts; write the script to a file instead.
 - **Settings** are saved on a debounce and flushed on `pagehide`, `beforeunload` and when the page becomes hidden.
-- **Large files**: JS strings stop near 512 M characters. Files over 64 MB must go to the read-only, disk-backed viewer (0.4), never into a CodeMirror document. Keep engine interfaces as bytes in, typed arrays out, chunk by chunk.
+- **Large files**: JS strings stop near 512 M characters. Files over `settings.largeFileMB` (64) never enter a CodeMirror document: `src/files/bigopen.ts` creates a tab with `big: true` and an empty read-only placeholder doc, `src/app/big.ts` holds the page-side state, the worker's `BigIndex` reads the File in 16 MB chunks and parses each chunk with the ordinary log parser, then merges (lines before a chunk's first entry inherit the previous chunk's level and time). Text for the rows on screen is fetched by line range.
+- **Large-file viewer** (`src/viewer/BigViewer.tsx`): rows live in a sticky zero-height layer inside the scroller; the spacer's height is capped at 8 M px and scroll position is scaled above that, with the wheel handled by hand so it stays exact. It must read `bigTick.value` itself: @preact/signals skips re-rendering a signal-using component whose props did not change, so a parent re-render alone is not enough.
+- **Navigator**: while a large-file tab is on screen the viewer registers itself with `setNavigator` in editor.ts, so `goToLine`, `currentLine` and `focusEditor` (used by F8, the timeline, Go to line, dialogs) work for both views. `activateTab` clears it when switching to an editor tab.
+- **Testing large-file code** uses `largeFileMB: 0.001` (and `tailAskMB`/`tailMB`) in stored settings so ordinary fixtures go through the viewer; `biglog.spec.ts` generates a real 150 MB log. Generated logs live in `tmp/` (git-ignored).
+- **Files changing on disk** (`src/files/watch.ts`): handles are polled (1 s when followed, else 2 s, only while visible). A baseline of size, mtime and the last 64 bytes tells "appended" from "rewritten". `rebase(id)` must be called after anything Tracepad itself writes, or its own save looks like an outside change. Tests trigger a check with `__tracepad.checkDisk()`.
+- **Windows clipboard** turns \n into \r\n; tests that read the clipboard must normalise.
 - **Logs**: `src/app/logs.ts` decides which tab is a log, parses the tab on screen (debounced after edits) and applies ONE shared filter to whichever log is shown. The page keeps only small arrays (`PageIndex`); bytes and the full index stay in the worker. Timestamps are wall-clock milliseconds exactly as written in the log (zone ignored) so typed times match what is on screen.
 - **Regex filters use JavaScript syntax** and run in TypeScript in the worker, on purpose: the same pattern must behave the same in the find box and the filter, and Rust regex has no look-around. Parsing is the Rust part.
 - **Changing the parser**: change `engine-rs/src/log.rs` and `src/engine/logparse.ts` together, keep them the same shape, add a fixture to `tests/fixtures/logs.ts`; `tests/unit/log-parity.test.ts` compares every array.

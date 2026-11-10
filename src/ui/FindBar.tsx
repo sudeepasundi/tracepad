@@ -4,16 +4,18 @@ import { SearchQuery, closeSearchPanel, findNext, findPrevious, openSearchPanel,
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { registerLayer } from '../app/commands';
-import { activeId, findOpen } from '../app/state';
+import { bigFindStep } from '../app/big';
+import { activeId, activeTab, findOpen } from '../app/state';
+import { BigFind } from '../viewer/BigFind';
 import { docTick, focusEditor, getView } from '../editor/editor';
 import { IconChevron, IconClose, IconDown, IconSelectAll, IconUp } from './icons';
 
-const query = signal('');
+export const query = signal('');
 const replacement = signal('');
-const caseSensitive = signal(false);
-const wholeWord = signal(false);
-const regexp = signal(false);
-const focusTick = signal(0);
+export const caseSensitive = signal(false);
+export const wholeWord = signal(false);
+export const regexp = signal(false);
+export const focusTick = signal(0);
 const count = signal<{ total: number; current: number; capped: boolean; invalid: boolean; skipped: boolean }>({ total: 0, current: 0, capped: false, invalid: false, skipped: false });
 
 const COUNT_CAP = 20000;
@@ -83,6 +85,10 @@ export function findStep(dir: 1 | -1): void {
     return;
   }
   if (!query.value) return;
+  if (activeTab.value?.big) {
+    bigFindStep(activeTab.value.id, dir);
+    return;
+  }
   push();
   const v = getView();
   (dir === 1 ? findNext : findPrevious)(v);
@@ -99,7 +105,13 @@ function Toggle({ on, label, text, flip }: { on: boolean; label: string; text: s
   );
 }
 
+/** The editor's find/replace box, or the large-file one when that kind of tab is on screen. */
 export function FindBar() {
+  if (!findOpen.value) return null;
+  return activeTab.value?.big ? <BigFind /> : <EditorFind />;
+}
+
+function EditorFind() {
   const mode = findOpen.value;
   const input = useRef<HTMLInputElement>(null);
   const tick = focusTick.value;

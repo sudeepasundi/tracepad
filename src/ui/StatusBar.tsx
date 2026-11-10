@@ -3,6 +3,7 @@ import { runCommand } from '../app/commands';
 import { settings } from '../app/settings';
 import { logInfo } from '../app/logs';
 import { activeTab, cursor } from '../app/state';
+import { formatBytes } from '../viewer/BigViewer';
 
 export function StatusBar() {
   const tab = activeTab.value;
@@ -14,12 +15,17 @@ export function StatusBar() {
       <div class="tp-status-left">
         {tab && (
           <span class={`tp-status-item tp-status-state${tab.dirty ? ' is-dirty' : ''}`} title={tab.handle ? 'Linked to the file on disk: Save writes back to it' : 'Not linked to a file on disk yet'}>
-            {tab.locked ? 'Waiting for access' : tab.dirty ? 'Unsaved changes' : tab.handle ? 'Saved to disk' : tab.untitled ? 'New file' : 'Not linked to disk'}
+            {tab.missing ? 'File is gone from disk' : tab.big ? `Read-only · ${formatBytes(c.chars)}${tab.tailOnly ? ' · end of the file only' : ''}` : tab.locked ? 'Waiting for access' : tab.dirty ? 'Unsaved changes' : tab.handle ? 'Saved to disk' : tab.untitled ? 'New file' : 'Not linked to disk'}
           </span>
         )}
         {c.selections > 1 ? <span class="tp-status-item">{c.selections} cursors</span> : c.selectedChars > 0 ? <span class="tp-status-item tp-hide-phone">{c.selectedChars.toLocaleString()} selected</span> : null}
       </div>
       <div class="tp-status-right">
+        {tab?.handle && !tab.locked && (
+          <button type="button" class={`tp-status-item tp-status-btn tp-status-follow${tab.follow ? ' is-on' : ''}`} aria-pressed={!!tab.follow} title="Follow file: keep the end in view as the file grows (like tail -f)" data-testid="status-follow" onClick={() => runCommand('file.follow')}>
+            {tab.follow ? 'Following' : 'Follow'}
+          </button>
+        )}
         <button type="button" class="tp-status-item tp-status-btn" title="Go to line (Ctrl+G)" onClick={() => runCommand('edit.goto')}>
           Ln {c.line.toLocaleString()}, Col {c.col.toLocaleString()}
         </button>

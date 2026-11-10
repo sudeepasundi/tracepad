@@ -4,6 +4,7 @@ import { selectNextOccurrence } from '@codemirror/search';
 import sampleLog from '../assets/sample-spring.log?raw';
 import { applyEditorSettings, focusEditor, getView, goToLine, selectAll } from '../editor/editor';
 import { openFiles, saveTab, saveTabAs } from '../files/fileio';
+import { checkDisk } from '../files/watch';
 import { findStep, openFind } from '../ui/FindBar';
 import { registerCommands, type Command } from './commands';
 import { ask, toast } from './feedback';
@@ -59,7 +60,7 @@ export function toggleSetting(key: 'wordWrap' | 'minimap' | 'lineNumbers'): void
 export function toggleEol(): void {
   const id = activeId.value;
   const tab = tabs.value.find((t) => t.id === id);
-  if (!tab || id == null) return;
+  if (!tab || id == null || tab.big) return;
   const eol = tab.eol === 'LF' ? 'CRLF' : 'LF';
   patchTab(id, { eol, dirty: true });
   toast(`Line endings will be saved as ${eol}`, { ms: 2200 });
@@ -78,6 +79,24 @@ export function registerAllCommands(): void {
     { id: 'file.save', title: 'Save', category: 'File', keys: ['Ctrl+S'], run: () => void saveTab() },
     { id: 'file.saveAs', title: 'Save As…', category: 'File', keys: ['Ctrl+Shift+S'], run: () => void saveTabAs() },
     { id: 'file.close', title: 'Close tab', category: 'File', keys: ['Alt+W'], run: () => void (activeId.value != null && closeTab(activeId.value)) },
+    {
+      id: 'file.follow',
+      title: 'Follow file (keep the end in view as it grows)',
+      category: 'File',
+      run: () => {
+        const tab = tabs.value.find((t) => t.id === activeId.value);
+        if (!tab) return;
+        if (!tab.handle) {
+          toast('Only a file linked to disk can be followed. Open it with Open files in Chrome or Edge.', { ms: 5000 });
+          return;
+        }
+        patchTab(tab.id, { follow: !tab.follow });
+        if (!tab.follow) {
+          goToLine(Number.MAX_SAFE_INTEGER);
+          void checkDisk();
+        }
+      },
+    },
     { id: 'file.sample', title: 'Open the sample Spring Boot log', category: 'File', run: openSample },
     { id: 'tab.next', title: 'Next tab', category: 'Tabs', keys: ['Alt+PageDown', 'Alt+.'], run: () => cycleTab(1) },
     { id: 'tab.prev', title: 'Previous tab', category: 'Tabs', keys: ['Alt+PageUp', 'Alt+,'], run: () => cycleTab(-1) },
