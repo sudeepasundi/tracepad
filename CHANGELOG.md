@@ -2,6 +2,21 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.3.0
+
+Logs.
+
+- Log files are recognised automatically: Spring Boot, Logback and Log4j, JSON lines, Apache/Nginx access logs, syslog, java.util.logging, epoch timestamps and a generic fallback for any line that starts with a timestamp. Kubernetes and Docker line prefixes are understood, and Windows line endings make no difference. The status bar shows the detected format. "Treat this tab as a log" forces it for anything else.
+- Levels are coloured. In stack traces, library frames are dimmed and your own stand out; set your package prefix under Log insights. Stack traces fold into their entry.
+- A timeline above the log shows activity over time with warnings and errors marked. Click a bar to jump there; drag across it to filter to that time range; double-click to clear.
+- Filters, all combined: level chips with counts, text or regular expression, several "lines matching" patterns (any or all), logger or thread, trace ID, and From/To boxes that accept 10:15, 10:15:30 or a full date and time. One button clears them. Filtering never changes the file.
+- F8 and Shift+F8 jump between errors.
+- Log insights (sidebar): format, time span, level counts, and repeated errors and warnings grouped with counts; click a group to step through its occurrences.
+- Highlight rules (sidebar): mark words or patterns in your own colours, in every file.
+- "Filter to the trace ID on this line" follows one request through the log.
+- The minimap shows where the warnings and errors are.
+- Limits for now: files over 64 MB are still not opened (0.4), and a time typed without a date is taken on the day the log starts.
+
 ## 0.2.0
 
 Tabs and files.

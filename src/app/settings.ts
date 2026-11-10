@@ -1,5 +1,6 @@
 import { effect, signal } from '@preact/signals';
 import { loadJSON, saveJSON } from './storage';
+import type { HighlightRule } from '../editor/log';
 import { buildPalette, findAccent, findTheme } from './themes';
 
 export interface Settings {
@@ -13,6 +14,9 @@ export interface Settings {
   lineNumbers: boolean;
   sidebarWidth: number;
   filesSort: 'order' | 'name' | 'recent' | 'type';
+  /** Stack frames from this package are highlighted, e.g. com.mycompany. */
+  ownPackage: string;
+  highlights: HighlightRule[];
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -39,6 +43,8 @@ export const DEFAULTS: Settings = {
   lineNumbers: true,
   sidebarWidth: SIDEBAR_DEFAULT,
   filesSort: 'order',
+  ownPackage: '',
+  highlights: [],
 };
 
 const KEY = 'tracepad.settings';

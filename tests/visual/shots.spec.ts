@@ -27,8 +27,24 @@ for (const vp of VIEWPORTS) {
       await shot('1-welcome');
 
       await openSample(page);
-      await page.waitForTimeout(250);
+      await page.locator('.tp-logbar[data-log-status="ready"]').waitFor();
+      await page.waitForTimeout(150);
       await shot('2-log');
+
+      await page.keyboard.press('F8');
+      await page.locator('.tp-chip', { hasText: 'ERROR' }).click();
+      await page.locator('.tp-chip', { hasText: 'WARN' }).click();
+      await page.getByRole('button', { name: /More filters/ }).click();
+      await page.getByLabel('From').fill('10:15:20');
+      await page.waitForTimeout(400);
+      await shot('2b-log-filtered');
+      await page.getByRole('button', { name: 'Log insights' }).click();
+      await page.waitForTimeout(400);
+      await shot('2c-log-insights');
+      await page.getByRole('button', { name: 'Close sidebar' }).click();
+      await page.getByRole('button', { name: 'Clear filters' }).click();
+      await page.getByRole('button', { name: /More filters/ }).click();
+      await page.keyboard.press('Control+Home');
 
       await page.keyboard.press('Control+H');
       await page.getByRole('textbox', { name: 'Find', exact: true }).fill('orderId=\\d+');

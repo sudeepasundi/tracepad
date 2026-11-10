@@ -6,6 +6,7 @@ import { hasUnstoredChanges } from './app/session';
 import { initSettings } from './app/settings';
 import { crossOriginFramed, tabs } from './app/state';
 import { getView } from './editor/editor';
+import { hiddenField } from './editor/log';
 import { startEngine } from './engine/client';
 import { installDrop } from './files/fileio';
 import { App } from './ui/App';
@@ -22,6 +23,20 @@ void startEngine();
   version: __APP_VERSION__,
   docText: () => getView().state.doc.toString(),
   selections: () => getView().state.selection.ranges.length,
+  // Lines currently drawn or reachable, i.e. not hidden by a filter.
+  hiddenLines: () => {
+    const s = getView().state;
+    let n = 0;
+    s.field(hiddenField).between(0, s.doc.length, (from, to) => {
+      n += s.doc.lineAt(to).number - s.doc.lineAt(from).number + 1;
+    });
+    return n;
+  },
+  cursorLine: () => {
+    const s = getView().state;
+    return s.doc.lineAt(s.selection.main.head).number;
+  },
+  lineText: (n: number) => getView().state.doc.line(n).text,
 };
 
 window.addEventListener('tp-error', (e) => toast(String((e as CustomEvent).detail), { kind: 'error' }));

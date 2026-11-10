@@ -153,7 +153,7 @@ export function FilesPanel() {
                   <span class="tp-file-name">{t.name}</span>
                   {t.dirty && <span class="tp-tag tp-tag-accent">unsaved</span>}
                   {t.locked && <span class="tp-tag">needs access</span>}
-                  {t.lang === 'Log' && <span class="tp-tag">log</span>}
+                  {(t.isLog || t.lang === 'Log') && <span class="tp-tag">log</span>}
                 </button>
               )}
               <button

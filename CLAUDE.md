@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 and 2 (0.1.0, 0.2.0) are shipped; next is 0.3 (logs: format detection, colours, timeline, filters).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 3 (0.1.0, 0.2.0, 0.3.0) are shipped; next is 0.4 (read-only large-file viewer, follow file, reload on change).
 
 ## Stack
 
@@ -16,7 +16,7 @@ The approved plan and milestone list live in `README.md` ("Planned") and `CHANGE
 ```
 index.html              entry; links marked data-pwa are stripped from the single-file build
 vite.config.ts          both builds, CSP injection, service-worker generation
-engine-rs/src/lib.rs    Rust engine (scan today; indexing/parsing/filtering/templates later)
+engine-rs/src/lib.rs    Rust engine exports (C ABI); log.rs = log parser (twin: src/engine/logparse.ts)
 scripts/build-wasm.mjs  cargo build -> src/engine/engine.wasm (git-ignored)
 scripts/gen-log.mjs     deterministic Spring Boot log generator (sample + big test files)
 scripts/serve.mjs       static server for tests; --frame embeds a URL in a sandboxed iframe
@@ -25,9 +25,10 @@ src/boot.ts             first import is app/paste.ts (paste capture before any e
 src/main.tsx            wiring, service-worker registration, window.__tracepad test hook
 src/app/                state (signals), settings, themes, commands + layers, tabs, feedback, storage,
                         session (restore) + idb
-src/editor/             CodeMirror setup, languages, minimap
+src/editor/             CodeMirror setup, languages, minimap, log.ts (colours, hidden lines, folding, highlight rules)
 src/files/              encodings, open/save/drag-drop
-src/engine/             client (worker + fallbacks), wasm wrapper, TypeScript twins
+src/engine/             client (worker + fallbacks), wasm wrapper, TypeScript twins (scan, logparse),
+                        logfilter (filters, grouping; TypeScript only), logService (worker-side store)
 src/workers/            engine worker
 src/ui/                 Preact components
 src/styles/app.css      all styles
@@ -84,7 +85,12 @@ Release checklist (every change ships as a version):
 - **Shell heredocs mangle backslashes** in patch scripts; write the script to a file instead.
 - **Settings** are saved on a debounce and flushed on `pagehide`, `beforeunload` and when the page becomes hidden.
 - **Large files**: JS strings stop near 512 M characters. Files over 64 MB must go to the read-only, disk-backed viewer (0.4), never into a CodeMirror document. Keep engine interfaces as bytes in, typed arrays out, chunk by chunk.
-- **Hidden lines**: when filters arrive (0.3), test hiding on 300k+ lines.
+- **Logs**: `src/app/logs.ts` decides which tab is a log, parses the tab on screen (debounced after edits) and applies ONE shared filter to whichever log is shown. The page keeps only small arrays (`PageIndex`); bytes and the full index stay in the worker. Timestamps are wall-clock milliseconds exactly as written in the log (zone ignored) so typed times match what is on screen.
+- **Regex filters use JavaScript syntax** and run in TypeScript in the worker, on purpose: the same pattern must behave the same in the find box and the filter, and Rust regex has no look-around. Parsing is the Rust part.
+- **Changing the parser**: change `engine-rs/src/log.rs` and `src/engine/logparse.ts` together, keep them the same shape, add a fixture to `tests/fixtures/logs.ts`; `tests/unit/log-parity.test.ts` compares every array.
+- **Hidden lines** are block `Decoration.replace` ranges built from the filter mask; `tests/e2e/biglog.spec.ts` checks them on 300k lines (about 3 s to open and parse, 0.4 s to filter locally).
+- **Tests that read filtered lines must wait** (`expect.poll`): the count text can match before the new mask is drawn.
+- **Button names**: Playwright matches accessible names by substring; two buttons must not have one name inside the other (the filter toggles are "Case-sensitive filter" / "Use regex in filter" for that reason).
 - **Timestamps**: allow a prefix of up to ~64 characters before the timestamp (Kubernetes and epoch logs) or the whole file collapses into one entry.
 - **CRLF**: Windows checkouts and Windows logs have `\r\n`. `.gitattributes` forces LF in the repo; parsers must strip a trailing `\r`.
 - **WebAssembly can be blocked** by a frame's CSP. `src/engine/client.ts` falls back to TypeScript in a worker, then TypeScript on the main thread. Help > About shows which engine is active.

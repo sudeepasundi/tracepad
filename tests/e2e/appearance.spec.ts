@@ -104,7 +104,7 @@ for (const size of SIZES) {
       expect(replaceBtn.x - (replaceInput.x + replaceInput.width)).toBeLessThan(24);
       for (const name of ['Match case', 'Whole word', 'Regular expression']) {
         const b = await box(page.getByRole('button', { name }));
-        const field = await box(page.locator('.tp-find-field').first());
+        const field = await box(page.locator('.tp-find .tp-find-field').first());
         expect(b.x).toBeGreaterThanOrEqual(field.x);
         expect(b.x + b.width).toBeLessThanOrEqual(field.x + field.width);
       }

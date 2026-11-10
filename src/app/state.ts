@@ -13,6 +13,10 @@ export interface Tab {
   eol: 'LF' | 'CRLF';
   lang: string;
   dirty: boolean;
+  /** Detected (or forced) as a log: timeline, filters and level colours apply. */
+  isLog?: boolean;
+  /** true/false = the user's explicit choice; undefined = detect automatically. */
+  forceLog?: boolean;
   /** Restored linked file waiting for permission; content not loaded yet. */
   locked?: boolean;
   lastUsed: number;
@@ -35,7 +39,7 @@ export interface CursorInfo {
   selectedChars: number;
 }
 
-export type SidebarPanel = 'files' | 'appearance' | 'help';
+export type SidebarPanel = 'files' | 'insights' | 'highlights' | 'appearance' | 'help';
 
 export const tabs = signal<Tab[]>([]);
 export const activeId = signal<number | null>(null);

@@ -6,9 +6,10 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 Tracepad is being built in milestones. This page lists what works today and what is planned; the [changelog](CHANGELOG.md) has the detail for each release.
 
-## What works today (0.2)
+## What works today (0.3)
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
+- **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
 - **Session restore**: tabs, their order and unsaved text come back after a reload or restart; linked files are re-read from disk (after a browser restart they ask for access once).
 - **Tab management**: rename (double-click, F2 or right-click; renames the file on disk in Chrome and Edge), drag to reorder, a right-click menu, and an Open files list (`Ctrl+Shift+E`) with filter, sort and keyboard navigation.
 - **Encodings**: UTF-8, UTF-8 with BOM, UTF-16 LE/BE and Latin-1 are detected and written back unchanged. Line endings (LF/CRLF) are kept and can be switched from the status bar. Binary files are refused.
@@ -23,7 +24,6 @@ Tracepad is being built in milestones. This page lists what works today and what
 
 | Version | Adds |
 |---|---|
-| 0.3 | Log format detection, level colours, stack-trace folding, timeline, filters, error grouping |
 | 0.4 | Read-only viewer for very large logs (hundreds of MB), follow file, reload on change |
 | 0.5 | Extract to table, automatic tables from log patterns, results panel |
 | 0.6 | Pasted tables to Markdown, Markdown preview |
@@ -43,7 +43,7 @@ Files over 64 MB are not opened yet; that needs the large-file viewer in 0.4.
 
 ## Run and build
 
-Requirements: Node 22+, and Rust with the WebAssembly target (`rustup target add wasm32-unknown-unknown`). Rust is needed because the byte-level engine is compiled to WebAssembly; a TypeScript fallback covers browsers and frames where WebAssembly is blocked.
+Requirements: Node 22+, and Rust with the WebAssembly target (`rustup target add wasm32-unknown-unknown`). Rust is needed because the log parser is compiled to WebAssembly; a TypeScript fallback covers browsers and frames where WebAssembly is blocked.
 
 ```bash
 npm install
@@ -58,7 +58,7 @@ npm run build:all      # both
 ## Test
 
 ```bash
-npm test               # unit tests (Vitest): themes/contrast, encodings, Rust vs TypeScript parity
+npm test               # unit tests (Vitest): themes/contrast, encodings, log formats, filters, Rust vs TypeScript parity
 npm run test:rust      # Rust unit tests
 npm run build:all      # the end-to-end tests run against the built output
 npx playwright install chromium firefox webkit

@@ -100,3 +100,24 @@ test('Open files list, tab menu and rename fit on a phone', async ({ page }) => 
   await expect(page.locator('.tp-file-name', { hasText: 'renamed-on-phone.log' })).toBeVisible();
   await fits(page);
 });
+
+test('the log bar fits: timeline, chips and filters without sideways scrolling', async ({ page }) => {
+  await openSample(page);
+  await expect(page.locator('.tp-logbar[data-log-status="ready"]')).toBeVisible();
+  for (const sel of ['.tp-logbar', '.tp-timeline-strip', '.tp-lf-text', '.tp-lf-more', '.tp-lf-count']) {
+    const b = await box(page.locator(sel));
+    expect(b.x, sel).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width, sel).toBeLessThanOrEqual(W + 0.5);
+  }
+  await page.locator('.tp-chip', { hasText: 'ERROR' }).tap();
+  await expect(page.getByTestId('filter-count')).toHaveText('3 of 370 entries');
+  await page.getByRole('button', { name: /More filters/ }).tap();
+  for (const el of await page.locator('.tp-lf-advanced .tp-input').all()) {
+    const b = await box(el);
+    expect(b.x + b.width).toBeLessThanOrEqual(W);
+    expect(b.width).toBeGreaterThan(120);
+  }
+  // The editor keeps a usable share of the screen under the log bar.
+  expect((await box(page.locator('.tp-editor-area'))).height).toBeGreaterThan(380);
+  await fits(page);
+});

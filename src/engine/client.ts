@@ -5,9 +5,22 @@ import EngineWorker from '../workers/engine.worker?worker&inline';
 import type { EngineRequest, EngineResponse } from '../workers/engine.worker';
 import wasmUrl from './engine.wasm?url';
 import { engineKind } from '../app/state';
+import type { ErrorGroup, FilterResult, FilterSpec } from './logfilter';
+import { logDrop, logFilter, logGroups, logParse } from './logService';
 import { scanTs, type ScanStats } from './scan';
 
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void };
+type Op = EngineRequest extends infer R ? (R extends { id: number } ? Omit<R, 'id'> : never) : never;
+
+/** What the page keeps of a parsed log: enough to colour, fold, plot and navigate. */
+export interface PageIndex {
+  level: Uint8Array;
+  flags: Uint8Array;
+  ts: Float64Array;
+  summary: Float64Array;
+  /** 0-based line of each entry's first line. */
+  entryLines: Uint32Array;
+}
 
 let worker: Worker | null = null;
 let ready: Promise<void> | null = null;
@@ -32,7 +45,7 @@ async function loadWasmBytes(): Promise<ArrayBuffer | null> {
   }
 }
 
-function call<T>(msg: Omit<EngineRequest, 'id'>, transfer: Transferable[] = []): Promise<T> {
+function call<T>(msg: Op, transfer: Transferable[] = []): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     const id = seq++;
     pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
@@ -81,4 +94,39 @@ export async function scanBytes(bytes: Uint8Array): Promise<ScanStats> {
   } catch {
     return scanTs(bytes);
   }
+}
+
+// ----------------------------------------------------------------------- logs
+
+function localParse(key: string, bytes: Uint8Array, year: number): PageIndex {
+  const ix = logParse(key, bytes, null, year);
+  const entryLines = new Uint32Array(ix.fields.length / 8);
+  for (let i = 0; i < entryLines.length; i++) entryLines[i] = ix.fields[i * 8];
+  return { level: ix.level, flags: ix.flags, ts: ix.ts, summary: ix.summary, entryLines };
+}
+
+/** Parses a log. `bytes` is handed over to the engine (do not reuse it). */
+export async function parseLog(key: string, bytes: Uint8Array): Promise<PageIndex> {
+  await startEngine();
+  const year = new Date().getFullYear();
+  if (!worker) return localParse(key, bytes, year);
+  const buf = bytes.buffer as ArrayBuffer;
+  return call<PageIndex>({ op: 'log.parse', key, bytes: buf, year }, [buf]);
+}
+
+export async function filterLog(key: string, spec: FilterSpec): Promise<FilterResult | null> {
+  await startEngine();
+  if (!worker) return logFilter(key, spec);
+  return call<FilterResult | null>({ op: 'log.filter', key, spec });
+}
+
+export async function groupLog(key: string): Promise<ErrorGroup[]> {
+  await startEngine();
+  if (!worker) return logGroups(key);
+  return call<ErrorGroup[]>({ op: 'log.groups', key });
+}
+
+export function dropLog(key: string): void {
+  if (worker) void call({ op: 'log.drop', key }).catch(() => undefined);
+  else logDrop(key);
 }

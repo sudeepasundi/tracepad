@@ -1,5 +1,6 @@
 // Thin, dependency-free wrapper around engine.wasm (plain C ABI, no imports).
 // Used by the worker in the browser and directly by the Node parity tests.
+import type { LogIndex } from './logparse';
 import { statsFromF64, type ScanStats } from './scan';
 
 interface Exports {
@@ -8,9 +9,13 @@ interface Exports {
   tp_alloc(len: number): number;
   tp_free(ptr: number, len: number): void;
   tp_scan(ptr: number, len: number, out: number): void;
+  tp_log_parse(ptr: number, len: number, defaultYear: number): void;
+  tp_log_ptr(which: number): number;
+  tp_log_len(which: number): number;
+  tp_log_free(): void;
 }
 
-export const ENGINE_ABI = 1;
+export const ENGINE_ABI = 2;
 
 export class WasmEngine {
   private constructor(private readonly x: Exports) {}
@@ -35,6 +40,32 @@ export class WasmEngine {
     } finally {
       x.tp_free(ptr, bytes.length);
       x.tp_free(out, 64);
+    }
+  }
+
+  parseLog(bytes: Uint8Array, defaultYear: number): LogIndex {
+    const x = this.x;
+    const ptr = x.tp_alloc(bytes.length);
+    try {
+      new Uint8Array(x.memory.buffer, ptr, bytes.length).set(bytes);
+      x.tp_log_parse(ptr, bytes.length, defaultYear);
+      // Copies: the engine's own arrays are released right after.
+      const copy = (which: number, bytesPer: number): ArrayBuffer => {
+        const at = x.tp_log_ptr(which);
+        const len = x.tp_log_len(which) * bytesPer;
+        return len ? x.memory.buffer.slice(at, at + len) : new ArrayBuffer(0);
+      };
+      return {
+        lineStart: new Uint32Array(copy(0, 4)),
+        level: new Uint8Array(copy(1, 1)),
+        flags: new Uint8Array(copy(2, 1)),
+        ts: new Float64Array(copy(3, 8)),
+        fields: new Uint32Array(copy(4, 4)),
+        summary: new Float64Array(copy(5, 8)),
+      };
+    } finally {
+      x.tp_log_free();
+      x.tp_free(ptr, bytes.length);
     }
   }
 }

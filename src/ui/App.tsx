@@ -8,7 +8,9 @@ import { Palette } from './Palette';
 import { Rail, Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { TopBar } from './TopBar';
+import { LogBar } from './LogBar';
 import { MenuHost } from './Menu';
+import { initLogs } from '../app/logs';
 import { Locked, Welcome } from './Welcome';
 import { initSessionPersistence, restoreSession } from '../app/session';
 import { installLaunchQueue } from '../files/fileio';
@@ -23,6 +25,7 @@ export function App() {
       await restoreSession().catch((e) => console.error('session restore failed', e));
       if (tabs.value.length === 0) newTab();
       initSessionPersistence();
+      initLogs();
       installLaunchQueue();
       document.documentElement.dataset.ready = 'true';
     })();
@@ -35,10 +38,13 @@ export function App() {
         <Rail />
         <Sidebar />
         <main class="tp-main">
-          <div class="tp-editor-host" ref={host} />
-          <Welcome />
-          <Locked />
-          <FindBar />
+          <LogBar />
+          <div class="tp-editor-area">
+            <div class="tp-editor-host" ref={host} />
+            <Welcome />
+            <Locked />
+            <FindBar />
+          </div>
         </main>
       </div>
       <StatusBar />

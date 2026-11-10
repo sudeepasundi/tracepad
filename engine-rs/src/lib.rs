@@ -5,6 +5,8 @@
 //! TypeScript twin in `src/engine/` that must return identical results; the
 //! parity tests in `tests/unit` enforce that.
 
+pub mod log;
+
 /// Result of one pass over a byte buffer. Field order is the wire format:
 /// the wasm export writes these as eight `f64` values in this order.
 #[derive(Debug, Default, PartialEq, Clone, Copy)]
@@ -75,7 +77,7 @@ pub fn scan(bytes: &[u8]) -> ScanStats {
 /// ABI version; bump when an export changes shape.
 #[no_mangle]
 pub extern "C" fn tp_abi() -> u32 {
-    1
+    2
 }
 
 #[no_mangle]
@@ -109,6 +111,62 @@ pub unsafe extern "C" fn tp_scan(ptr: *const u8, len: usize, out: *mut f64) {
     o[5] = s.high as f64;
     o[6] = s.control as f64;
     o[7] = s.max_line as f64;
+}
+
+// ---- log index: parse once, then read each array through ptr/len accessors.
+
+static mut LOG: Option<log::LogIndex> = None;
+
+/// Parses a log and keeps the result until the next call or `tp_log_free`.
+///
+/// # Safety
+/// `ptr..ptr+len` must be readable. Single-threaded use only.
+#[no_mangle]
+pub unsafe extern "C" fn tp_log_parse(ptr: *const u8, len: usize, default_year: i32) {
+    let ix = log::parse_log(std::slice::from_raw_parts(ptr, len), default_year as i64);
+    *std::ptr::addr_of_mut!(LOG) = Some(ix);
+}
+
+/// Pointer to one result array: 0 line_start (u32), 1 level (u8), 2 flags (u8),
+/// 3 ts (f64), 4 fields (u32), 5 summary (f64).
+///
+/// # Safety
+/// Valid until the next `tp_log_parse` / `tp_log_free`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_log_ptr(which: u32) -> *const u8 {
+    match (&*std::ptr::addr_of!(LOG), which) {
+        (Some(ix), 0) => ix.line_start.as_ptr() as *const u8,
+        (Some(ix), 1) => ix.level.as_ptr(),
+        (Some(ix), 2) => ix.flags.as_ptr(),
+        (Some(ix), 3) => ix.ts.as_ptr() as *const u8,
+        (Some(ix), 4) => ix.fields.as_ptr() as *const u8,
+        (Some(ix), 5) => ix.summary.as_ptr() as *const u8,
+        _ => std::ptr::null(),
+    }
+}
+
+/// Number of elements in the array `which`.
+///
+/// # Safety
+/// See `tp_log_ptr`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_log_len(which: u32) -> usize {
+    match (&*std::ptr::addr_of!(LOG), which) {
+        (Some(ix), 0) => ix.line_start.len(),
+        (Some(ix), 1) => ix.level.len(),
+        (Some(ix), 2) => ix.flags.len(),
+        (Some(ix), 3) => ix.ts.len(),
+        (Some(ix), 4) => ix.fields.len(),
+        (Some(_), 5) => log::SUMMARY_LEN,
+        _ => 0,
+    }
+}
+
+/// # Safety
+/// Invalidates every pointer returned by `tp_log_ptr`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_log_free() {
+    *std::ptr::addr_of_mut!(LOG) = None;
 }
 
 #[cfg(test)]

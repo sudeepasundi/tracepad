@@ -11,6 +11,7 @@ import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settin
 import { activeId, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
 import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
+import { clearFilters, filterFocus, filterToTraceAtCursor, foldTraces, forceLog, jumpToError } from './logs';
 
 export function toggleSidebar(panel: SidebarPanel): void {
   sidebar.value = sidebar.value === panel ? null : panel;
@@ -111,6 +112,27 @@ export function registerAllCommands(): void {
       run: () => void toast('Hold Alt and drag to select a column. Ctrl+click adds another cursor.', { ms: 5000 }),
     },
 
+    { id: 'log.nextError', title: 'Next error', category: 'Log', keys: ['F8'], run: () => jumpToError(1) },
+    { id: 'log.prevError', title: 'Previous error', category: 'Log', keys: ['Shift+F8'], run: () => jumpToError(-1) },
+    {
+      id: 'log.filter',
+      title: 'Filter log entries',
+      category: 'Log',
+      keys: ['Alt+L'],
+      run: () => {
+        const tab = tabs.value.find((t) => t.id === activeId.value);
+        if (!tab?.isLog) toast('This tab is not a log. Use "Treat this tab as a log" if it should be.', { ms: 4000 });
+        else filterFocus.value++;
+      },
+    },
+    { id: 'log.clear', title: 'Clear log filters', category: 'Log', run: clearFilters },
+    { id: 'log.traceHere', title: 'Filter to the trace ID on this line', category: 'Log', run: filterToTraceAtCursor },
+    { id: 'log.fold', title: 'Fold all stack traces', category: 'Log', run: () => foldTraces(true) },
+    { id: 'log.unfold', title: 'Unfold all stack traces', category: 'Log', run: () => foldTraces(false) },
+    { id: 'log.force', title: 'Treat this tab as a log', category: 'Log', run: () => forceLog(true) },
+    { id: 'log.unforce', title: 'Stop treating this tab as a log', category: 'Log', run: () => forceLog(false) },
+    { id: 'view.insights', title: 'Log insights', category: 'View', run: () => toggleSidebar('insights') },
+    { id: 'view.highlights', title: 'Highlight rules', category: 'View', run: () => toggleSidebar('highlights') },
     { id: 'view.palette', title: 'Command palette', category: 'View', keys: ['Ctrl+Shift+P', 'F1'], run: () => void (paletteOpen.value = !paletteOpen.value) },
     { id: 'view.wrap', title: 'Toggle word wrap', category: 'View', keys: ['Alt+Z'], run: () => toggleSetting('wordWrap') },
     { id: 'view.minimap', title: 'Toggle minimap', category: 'View', run: () => toggleSetting('minimap') },

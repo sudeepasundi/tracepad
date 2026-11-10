@@ -1,12 +1,14 @@
 import { toggleEol, toggleSetting } from '../app/actions';
 import { runCommand } from '../app/commands';
 import { settings } from '../app/settings';
+import { logInfo } from '../app/logs';
 import { activeTab, cursor } from '../app/state';
 
 export function StatusBar() {
   const tab = activeTab.value;
   const c = cursor.value;
   const wrap = settings.value.wordWrap;
+  const log = tab?.isLog ? logInfo.value[tab.id] : undefined;
   return (
     <footer class="tp-status" aria-label="Status bar">
       <div class="tp-status-left">
@@ -35,6 +37,11 @@ export function StatusBar() {
             <button type="button" class="tp-status-item tp-status-btn" title="Line endings; click to switch between LF and CRLF" data-testid="status-eol" onClick={toggleEol}>
               {tab.eol}
             </button>
+            {log && (
+              <button type="button" class="tp-status-item tp-status-btn tp-hide-phone" title="Detected log format. Click for log insights" data-testid="status-format" onClick={() => runCommand('view.insights')}>
+                {log.status === 'parsing' ? 'Reading log…' : log.format}
+              </button>
+            )}
             <span class="tp-status-item tp-hide-phone" title="Syntax mode" data-testid="status-lang">
               {tab.lang}
             </span>

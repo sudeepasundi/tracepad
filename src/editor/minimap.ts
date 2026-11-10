@@ -3,6 +3,7 @@
 // that fit in the strip, so its cost does not grow with the document.
 import { ViewPlugin, type EditorView, type ViewUpdate } from '@codemirror/view';
 import { settings } from '../app/settings';
+import { logIndexField } from './log';
 
 const WIDTH = 84;
 const LINE_H = 2;
@@ -104,6 +105,10 @@ class Minimap {
     const css = getComputedStyle(view.dom);
     const text = css.getPropertyValue('--tp-text').trim() || '#888';
     const accent = css.getPropertyValue('--tp-accent-text').trim() || '#48f';
+    const danger = css.getPropertyValue('--tp-danger').trim() || '#f55';
+    const warn = css.getPropertyValue('--tp-warn').trim() || '#fa0';
+    const log = view.state.field(logIndexField, false);
+    const levels = log?.index && log.fresh && log.index.level.length === view.state.doc.lines ? log.index.level : null;
 
     const doc = view.state.doc;
     const total = doc.lines;
@@ -118,6 +123,9 @@ class Minimap {
     let row = 0;
     for (const line of doc.iterLines(first + 1, last + 1)) {
       const y = row * LINE_H;
+      const lv = levels ? levels[first + row] : 0;
+      ctx.fillStyle = lv >= 5 ? danger : lv === 4 ? warn : text;
+      ctx.globalAlpha = lv >= 4 ? 0.85 : 0.42;
       row++;
       const len = Math.min(line.length, MAX_COLS);
       let run = -1;

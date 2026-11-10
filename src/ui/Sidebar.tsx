@@ -6,10 +6,13 @@ import { storageIsPersistent } from '../app/storage';
 import { engineKind, sidebar, tabs, type SidebarPanel } from '../app/state';
 import { ACCENTS, THEMES, buildPalette, findAccent } from '../app/themes';
 import { FilesPanel } from './FilesPanel';
-import { IconCheck, IconClose, IconFiles, IconHelp, IconLock, IconPalette } from './icons';
+import { IconCheck, IconClose, IconFiles, IconHelp, IconLock, IconMarker, IconPalette, IconPulse } from './icons';
+import { HighlightsPanel, InsightsPanel } from './LogPanels';
 
 const PANELS: { id: SidebarPanel; label: string; icon: () => ComponentChildren; bottom?: boolean }[] = [
   { id: 'files', label: 'Open files list (Ctrl+Shift+E)', icon: () => <IconFiles size={20} /> },
+  { id: 'insights', label: 'Log insights', icon: () => <IconPulse size={20} /> },
+  { id: 'highlights', label: 'Highlight rules', icon: () => <IconMarker size={20} /> },
   { id: 'appearance', label: 'Appearance', icon: () => <IconPalette size={20} />, bottom: true },
   { id: 'help', label: 'Help and shortcuts', icon: () => <IconHelp size={20} />, bottom: true },
 ];
@@ -44,7 +47,7 @@ export function Rail() {
   );
 }
 
-const TITLES: Record<SidebarPanel, string> = { files: 'Open files', appearance: 'Appearance', help: 'Help' };
+const TITLES: Record<SidebarPanel, string> = { files: 'Open files', insights: 'Log insights', highlights: 'Highlight rules', appearance: 'Appearance', help: 'Help' };
 
 export function Sidebar() {
   const panel = sidebar.value;
@@ -80,6 +83,8 @@ export function Sidebar() {
       </div>
       <div class="tp-sidebar-body">
         {panel === 'files' && <FilesPanel />}
+        {panel === 'insights' && <InsightsPanel />}
+        {panel === 'highlights' && <HighlightsPanel />}
         {panel === 'appearance' && <AppearancePanel />}
         {panel === 'help' && <HelpPanel />}
       </div>
