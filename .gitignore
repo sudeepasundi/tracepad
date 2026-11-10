@@ -1,0 +1,11 @@
+node_modules/
+dist/
+dist-single/
+shots/
+test-results/
+playwright-report/
+engine-rs/target/
+src/engine/engine.wasm
+*.local
+.DS_Store
+tmp/

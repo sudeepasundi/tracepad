@@ -1,0 +1,52 @@
+name: Release
+
+# Run from the Actions tab. Creates tag v<version> (from package.json) through
+# the release API, so no tag push is needed, and attaches both builds.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Rust WebAssembly target
+        run: rustup target add wasm32-unknown-unknown
+      - run: npm ci
+      - name: Unit tests
+        run: npm test && npm run test:rust
+      - name: Build PWA and single file
+        run: npm run build:all
+      - name: Package
+        id: pkg
+        run: |
+          VERSION=$(jq -r .version package.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          (cd dist && zip -qr "../tracepad-$VERSION-pwa.zip" .)
+          cp dist-single/tracepad.html "tracepad-$VERSION.html"
+          # Release notes = this version's section of the changelog.
+          awk -v v="## $VERSION" '$0==v{on=1;next} /^## /{on=0} on' CHANGELOG.md > notes.md
+          test -s notes.md || echo "Release $VERSION" > notes.md
+      - name: Create tag and release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.pkg.outputs.version }}
+        run: |
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "Release v$VERSION already exists. Bump the version in package.json first." >&2
+            exit 1
+          fi
+          gh release create "v$VERSION" \
+            --target "$GITHUB_SHA" \
+            --title "Tracepad $VERSION" \
+            --notes-file notes.md \
+            "tracepad-$VERSION-pwa.zip" \
+            "tracepad-$VERSION.html"

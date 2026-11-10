@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "tracepad-dist",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/serve.mjs", "--dir", "dist", "--port", "4173", "--prefix", "/tracepad/"],
+      "port": 4173
+    }
+  ]
+}

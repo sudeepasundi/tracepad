@@ -1,0 +1,50 @@
+{
+  "name": "tracepad",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A browser text editor for backend developers: logs, tables and big files, fully offline.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "wasm": "node scripts/build-wasm.mjs",
+    "dev": "npm run wasm && vite",
+    "build": "npm run wasm && tsc --noEmit && vite build",
+    "build:single": "npm run wasm && vite build --mode single",
+    "build:all": "npm run build && vite build --mode single",
+    "test": "npm run wasm && vitest run",
+    "test:rust": "cargo test --manifest-path engine-rs/Cargo.toml",
+    "e2e": "playwright test --project=pwa --project=single --project=phone",
+    "e2e:browsers": "playwright test --project=firefox --project=webkit",
+    "shots": "playwright test --project=shots",
+    "icons": "node scripts/build-icons.mjs",
+    "sample": "node scripts/gen-log.mjs --lines 420 --seed 7 --out src/assets/sample-spring.log"
+  },
+  "dependencies": {
+    "@codemirror/autocomplete": "^6.20.4",
+    "@codemirror/commands": "^6.11.1",
+    "@codemirror/lang-java": "^6.0.2",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.2",
+    "@codemirror/lang-sql": "^6.10.0",
+    "@codemirror/lang-xml": "^6.1.0",
+    "@codemirror/lang-yaml": "^6.1.3",
+    "@codemirror/language": "^6.13.1",
+    "@codemirror/legacy-modes": "^6.5.5",
+    "@codemirror/search": "^6.7.2",
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/view": "^6.43.15",
+    "@lezer/highlight": "^1.2.5",
+    "@preact/signals": "^2.11.4",
+    "preact": "^11.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@preact/preset-vite": "^2.10.6",
+    "@types/node": "^26.6.6",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.7",
+    "vite-plugin-singlefile": "^2.3.4",
+    "vitest": "^5.1.0"
+  }
+}

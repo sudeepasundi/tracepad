@@ -1,0 +1,81 @@
+import { render } from 'preact';
+import { registerAllCommands } from './app/actions';
+import { installKeyboard } from './app/commands';
+import { toast } from './app/feedback';
+import { initSettings } from './app/settings';
+import { crossOriginFramed, tabs } from './app/state';
+import { getView } from './editor/editor';
+import { startEngine } from './engine/client';
+import { installDrop } from './files/fileio';
+import { App } from './ui/App';
+
+initSettings();
+registerAllCommands();
+installKeyboard();
+installDrop();
+render(<App />, document.getElementById('app')!);
+void startEngine();
+
+// Read-only hook used by the end-to-end tests (and handy in the console).
+(window as unknown as { __tracepad: unknown }).__tracepad = {
+  version: __APP_VERSION__,
+  docText: () => getView().state.doc.toString(),
+  selections: () => getView().state.selection.ranges.length,
+};
+
+window.addEventListener('tp-error', (e) => toast(String((e as CustomEvent).detail), { kind: 'error' }));
+window.addEventListener('tp-appearance', () => {
+  try {
+    getView().requestMeasure();
+  } catch {
+    /* editor not mounted yet */
+  }
+});
+
+// Warn before closing the page with unsaved work.
+window.addEventListener('beforeunload', (e) => {
+  if (tabs.value.some((t) => t.dirty)) {
+    e.preventDefault();
+    e.returnValue = '';
+  }
+});
+
+let wantReload = false;
+
+// Offline support: only for the hosted web app, never inside a frame or the single file.
+if (!__SINGLE__ && !crossOriginFramed && 'serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker
+      .register('./sw.js')
+      .then((reg) => {
+        const offer = (worker: ServiceWorker | null) => {
+          if (!worker || !navigator.serviceWorker.controller) return;
+          toast('A new version of Tracepad is available.', {
+            sticky: true,
+            action: {
+              label: 'Reload',
+              run: () => {
+                wantReload = true;
+                worker.postMessage('skip-waiting');
+              },
+            },
+          });
+        };
+        if (reg.waiting) offer(reg.waiting);
+        reg.addEventListener('updatefound', () => {
+          const next = reg.installing;
+          next?.addEventListener('statechange', () => {
+            if (next.state === 'installed') offer(next);
+          });
+        });
+      })
+      .catch(() => undefined);
+    // Reload only when the user asked for the update; the first install also
+    // fires controllerchange and must not reload the page.
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!wantReload) return;
+      wantReload = false;
+      window.location.reload();
+    });
+  });
+}

@@ -1,0 +1,76 @@
+// 390x844 touch viewport: no sideways scrolling and sensible stacking.
+import { expect, test, type Page } from '@playwright/test';
+import { box, docText, openApp, openSample } from './helpers';
+
+const W = 390;
+
+async function fits(page: Page): Promise<void> {
+  const m = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, bw: document.body.scrollWidth, w: innerWidth }));
+  expect(m.sw).toBeLessThanOrEqual(m.w);
+  expect(m.bw).toBeLessThanOrEqual(m.w);
+}
+
+test.beforeEach(async ({ page }) => {
+  await openApp(page);
+});
+
+test('welcome card fits and its actions are finger-sized', async ({ page }) => {
+  const card = await box(page.locator('.tp-welcome-card'));
+  expect(card.x).toBeGreaterThanOrEqual(0);
+  expect(card.x + card.width).toBeLessThanOrEqual(W);
+  for (const b of await page.locator('.tp-welcome-action').all()) expect((await box(b)).height).toBeGreaterThanOrEqual(44);
+  await fits(page);
+});
+
+test('top bar and status bar stay inside the screen with a long log open', async ({ page }) => {
+  await openSample(page);
+  for (const sel of ['.tp-topbar', '.tp-status', '.tp-topbar-actions', '.tp-status-right']) {
+    const b = await box(page.locator(sel));
+    expect(b.x, sel).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width, sel).toBeLessThanOrEqual(W + 0.5);
+  }
+  // The minimap is dropped on narrow screens so the text gets the width.
+  await expect(page.locator('.tp-minimap')).toBeHidden();
+  await fits(page);
+});
+
+test('find box stacks: the field gets a full row', async ({ page }) => {
+  await openSample(page);
+  await page.getByRole('button', { name: 'Search commands', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Search commands' }).fill('Replace');
+  await page.keyboard.press('Enter');
+  const find = await box(page.locator('.tp-find'));
+  expect(find.x).toBeGreaterThanOrEqual(0);
+  expect(find.x + find.width).toBeLessThanOrEqual(W);
+  expect((await box(page.getByRole('textbox', { name: 'Find', exact: true }))).width).toBeGreaterThan(180);
+  expect((await box(page.getByRole('textbox', { name: 'Replace with' }))).width).toBeGreaterThan(180);
+  for (const name of ['Previous match', 'Next match', 'Close find', 'Replace all']) {
+    const b = await box(page.getByRole('button', { name }));
+    expect(b.x + b.width, name).toBeLessThanOrEqual(find.x + find.width);
+  }
+  await fits(page);
+});
+
+test('sidebar opens over the editor and closes again', async ({ page }) => {
+  await page.getByRole('button', { name: 'Appearance' }).click();
+  const side = await box(page.locator('.tp-sidebar'));
+  const rail = await box(page.locator('.tp-rail'));
+  expect(Math.round(side.x)).toBe(Math.round(rail.x + rail.width));
+  expect(Math.round(side.x + side.width)).toBe(W);
+  await page.getByRole('radio', { name: 'Paper' }).tap();
+  await expect(page.locator('html')).toHaveAttribute('data-mode', 'light');
+  await fits(page);
+  await page.getByRole('button', { name: 'Close sidebar' }).tap();
+  await expect(page.locator('.tp-sidebar')).toHaveCount(0);
+});
+
+test('typing works and the palette fits', async ({ page }) => {
+  await page.locator('.cm-content').focus();
+  await page.keyboard.type('hello phone');
+  expect(await docText(page)).toBe('hello phone');
+  await page.getByRole('button', { name: 'Search commands', exact: true }).tap();
+  const p = await box(page.locator('.tp-palette'));
+  expect(p.x).toBeGreaterThanOrEqual(0);
+  expect(p.x + p.width).toBeLessThanOrEqual(W);
+  await fits(page);
+});
