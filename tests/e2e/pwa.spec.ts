@@ -22,6 +22,10 @@ test('manifest, icons and favicon are served and consistent', async ({ page, req
   const sizes = manifest.icons.map((i: { sizes: string }) => i.sizes);
   expect(sizes).toEqual(expect.arrayContaining(['192x192', '512x512']));
   expect(manifest.icons.some((i: { purpose: string }) => i.purpose === 'maskable')).toBe(true);
+  // Installed app: registered to open log, text, Markdown, JSON and CSV files.
+  const exts = manifest.file_handlers.flatMap((h: { accept: Record<string, string[]> }) => Object.values(h.accept).flat());
+  expect(exts).toEqual(expect.arrayContaining(['.log', '.txt', '.md', '.json', '.csv']));
+  expect(manifest.file_handlers[0].action).toBe('./');
   for (const icon of manifest.icons) {
     const res = await request.get(new URL(icon.src, manifestUrl).toString());
     expect(res.status(), icon.src).toBe(200);

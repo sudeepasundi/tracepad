@@ -1,7 +1,8 @@
 import { openSample } from '../app/actions';
 import { runCommand } from '../app/commands';
 import { activeDocEmpty, activeTab, isMac } from '../app/state';
-import { IconCommand, IconFlask, IconFolder, IconLock, Logo } from './icons';
+import { closeTab, unlockTab } from '../app/tabs';
+import { IconCommand, IconFlask, IconFolder, IconLock, IconUnlock, Logo } from './icons';
 
 /** Shown over an empty, untitled tab. Typing anything hides it. */
 export function Welcome() {
@@ -47,6 +48,35 @@ export function Welcome() {
           <IconLock size={14} />
           <span>Files stay on this device. Nothing is uploaded. Just start typing to dismiss this card.</span>
         </p>
+      </div>
+    </div>
+  );
+}
+
+/** Shown over a restored linked file until the browser is allowed to read it again. */
+export function Locked() {
+  const tab = activeTab.value;
+  if (!tab?.locked) return null;
+  return (
+    <div class="tp-welcome tp-locked">
+      <div class="tp-welcome-card" role="region" aria-label="File needs access">
+        <div class="tp-welcome-head">
+          <span class="tp-locked-icon">
+            <IconUnlock size={22} />
+          </span>
+          <div>
+            <h1 class="tp-locked-title">Reopen {tab.name}?</h1>
+            <p class="tp-welcome-sub">Browsers ask again before a site may read a file after a restart. The file has not been read yet.</p>
+          </div>
+        </div>
+        <div class="tp-locked-buttons">
+          <button type="button" class="tp-btn" onClick={() => void closeTab(tab.id)}>
+            Close tab
+          </button>
+          <button type="button" class="tp-btn tp-btn-primary" onClick={() => void unlockTab(tab.id)}>
+            Allow access
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -3,9 +3,9 @@ import { toggleSetting, toggleSidebar, setFontSize } from '../app/actions';
 import { allCommands, shortcutLabel } from '../app/commands';
 import { FONT_CHOICES, FONT_MAX, FONT_MIN, SIDEBAR_DEFAULT, settings, updateSettings } from '../app/settings';
 import { storageIsPersistent } from '../app/storage';
-import { activeId, engineKind, sidebar, tabs, type SidebarPanel } from '../app/state';
-import { activateTab, closeTab } from '../app/tabs';
+import { engineKind, sidebar, tabs, type SidebarPanel } from '../app/state';
 import { ACCENTS, THEMES, buildPalette, findAccent } from '../app/themes';
+import { FilesPanel } from './FilesPanel';
 import { IconCheck, IconClose, IconFiles, IconHelp, IconLock, IconPalette } from './icons';
 
 const PANELS: { id: SidebarPanel; label: string; icon: () => ComponentChildren; bottom?: boolean }[] = [
@@ -93,27 +93,6 @@ export function Sidebar() {
         onDblClick={() => updateSettings({ sidebarWidth: SIDEBAR_DEFAULT })}
       />
     </aside>
-  );
-}
-
-function FilesPanel() {
-  const list = tabs.value;
-  const active = activeId.value;
-  return (
-    <ul class="tp-filelist" role="list">
-      {list.map((t) => (
-        <li key={t.id} class={`tp-file${t.id === active ? ' is-active' : ''}`}>
-          <button type="button" class="tp-file-main" aria-current={t.id === active ? 'true' : undefined} onClick={() => activateTab(t.id)}>
-            <span class={`tp-file-dot${t.dirty ? ' is-dirty' : ''}`} aria-hidden="true" />
-            <span class="tp-file-name">{t.name}</span>
-            <span class="tp-file-meta">{t.dirty ? 'unsaved' : t.lang === 'Log' ? 'log' : ''}</span>
-          </button>
-          <button type="button" class="tp-btn-icon tp-file-close" aria-label={`Close ${t.name}`} title="Close" onClick={() => void closeTab(t.id)}>
-            <IconClose size={13} />
-          </button>
-        </li>
-      ))}
-    </ul>
   );
 }
 

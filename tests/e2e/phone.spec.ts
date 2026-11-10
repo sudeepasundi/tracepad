@@ -74,3 +74,29 @@ test('typing works and the palette fits', async ({ page }) => {
   expect(p.x + p.width).toBeLessThanOrEqual(W);
   await fits(page);
 });
+
+test('Open files list, tab menu and rename fit on a phone', async ({ page }) => {
+  await openSample(page);
+  await page.getByRole('button', { name: 'New tab' }).tap();
+  await page.getByRole('button', { name: /^Open files list/ }).tap();
+  const side = await box(page.locator('.tp-sidebar'));
+  for (const sel of ['.tp-files-filter', '.tp-files-sort', '.tp-file', '.tp-file-btn']) {
+    for (const el of await page.locator(sel).all()) {
+      const b = await box(el);
+      expect(b.x, sel).toBeGreaterThanOrEqual(side.x);
+      expect(b.x + b.width, sel).toBeLessThanOrEqual(W);
+    }
+  }
+  await page.getByRole('button', { name: 'More actions for sample-spring-boot.log' }).tap();
+  const m = await box(page.getByRole('menu'));
+  expect(m.x).toBeGreaterThanOrEqual(0);
+  expect(m.x + m.width).toBeLessThanOrEqual(W);
+  await page.getByRole('menuitem', { name: /Rename/ }).tap();
+  const input = page.getByRole('textbox', { name: /^New name for/ });
+  const f = await box(input);
+  expect(f.x + f.width).toBeLessThanOrEqual(W);
+  await input.fill('renamed-on-phone.log');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tp-file-name', { hasText: 'renamed-on-phone.log' })).toBeVisible();
+  await fits(page);
+});

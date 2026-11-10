@@ -6,7 +6,7 @@ import { scanBytes } from '../engine/client';
 import { ask, toast } from '../app/feedback';
 import { activeId, crossOriginFramed, dropActive, patchTab, tabs } from '../app/state';
 import { activateTab, addTab } from '../app/tabs';
-import { decodeBytes, detectEncoding, encodeText } from './encoding';
+import { decodeBytes, detectEncoding, encodeText, type Encoding } from './encoding';
 
 /** Above this size a file needs the read-only large-file viewer (arrives in 0.4). */
 export const MAX_EDITABLE_BYTES = 64 * 1024 * 1024;
@@ -73,14 +73,30 @@ export async function openHandle(handle: FileSystemFileHandle): Promise<void> {
   await openFile(file, handle);
 }
 
+export interface Loaded {
+  text: string;
+  encoding: Encoding;
+  eol: 'LF' | 'CRLF';
+}
+
 export async function openFile(file: File, handle?: FileSystemFileHandle): Promise<void> {
+  const loaded = await readForTab(file);
+  if (loaded) addTab({ name: file.name, handle, ...loaded });
+}
+
+/** Reads and decodes a file, reporting anything that stops it. `quiet` skips the size dialog. */
+export async function readForTab(file: File, quiet = false): Promise<Loaded | null> {
   if (file.size > MAX_EDITABLE_BYTES) {
+    if (quiet) {
+      toast(`${file.name} is over 64 MB and was not reopened.`, { kind: 'info' });
+      return null;
+    }
     await ask({
       title: `${file.name} is too large for this version`,
       message: `It is ${(file.size / 1048576).toFixed(0)} MB. Files over 64 MB need the read-only large-file viewer, which arrives in version 0.4. Nothing was opened.`,
       buttons: [{ id: 'ok', label: 'OK', primary: true }],
     });
-    return;
+    return null;
   }
   let bytes: Uint8Array;
   try {
@@ -92,14 +108,14 @@ export async function openFile(file: File, handle?: FileSystemFileHandle): Promi
         : `Could not read ${file.name}.`,
       { kind: 'error', action: { label: 'Pick file again', run: () => void openFiles() } },
     );
-    return;
+    return null;
   }
   const detected = detectEncoding(bytes);
   const utf16 = detected.encoding.startsWith('UTF-16');
   const stats = utf16 || detected.binary ? null : await scanBytes(bytes);
   if (detected.binary || (stats && stats.nul > 0)) {
     toast(`${file.name} looks like a binary file, so it was not opened.`, { kind: 'error' });
-    return;
+    return null;
   }
   const text = decodeBytes(bytes, detected.encoding);
   let eol: 'LF' | 'CRLF';
@@ -109,7 +125,7 @@ export async function openFile(file: File, handle?: FileSystemFileHandle): Promi
     const crlf = head.split('\r\n').length - 1;
     eol = crlf > 0 && crlf >= head.split('\n').length - 1 - crlf ? 'CRLF' : 'LF';
   }
-  addTab({ name: file.name, text, handle, encoding: detected.encoding, eol });
+  return { text, encoding: detected.encoding, eol };
 }
 
 // ------------------------------------------------------------------ saving
@@ -174,6 +190,30 @@ export async function saveTabAs(id: number | null = activeId.value): Promise<boo
       markSaved(id);
       toast(`Saved ${handle.name}`, { kind: 'ok', ms: 1600 });
       return true;
+    }
+  }
+  if (crossOriginFramed) {
+    // Embedded pages are often not allowed to download; offer the clipboard too.
+    const r = await ask({
+      title: `Save ${tab.name}`,
+      message: 'Tracepad is running inside another page, which may block downloads. If nothing is downloaded, copy the text instead.',
+      buttons: [
+        { id: 'cancel', label: 'Cancel' },
+        { id: 'copy', label: 'Copy all text' },
+        { id: 'download', label: 'Download', primary: true },
+      ],
+    });
+    if (!r || r.button === 'cancel') return false;
+    if (r.button === 'copy') {
+      try {
+        await navigator.clipboard.writeText(docText(id, tab.eol));
+        toast(`Copied the text of ${tab.name}. Paste it where you want to keep it.`, { kind: 'ok', ms: 5000 });
+        markSaved(id);
+        return true;
+      } catch {
+        toast('The clipboard is not available here. Select all (Ctrl+A) and copy (Ctrl+C) instead.', { kind: 'error' });
+        return false;
+      }
     }
   }
   const bytes = bytesFor(id);
@@ -244,4 +284,15 @@ export function installDrop(): void {
     },
     true,
   );
+}
+
+// ------------------------------------------------------ installed-app file handler
+
+/** When installed, the OS can open .log/.txt/.md/.json/.csv files with Tracepad. */
+export function installLaunchQueue(): void {
+  window.launchQueue?.setConsumer((params) => {
+    void (async () => {
+      for (const handle of params.files ?? []) await openHandle(handle);
+    })();
+  });
 }

@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestone 1 (0.1.0) is shipped; next is 0.2 (tabs and files).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 and 2 (0.1.0, 0.2.0) are shipped; next is 0.3 (logs: format detection, colours, timeline, filters).
 
 ## Stack
 
@@ -23,7 +23,8 @@ scripts/serve.mjs       static server for tests; --frame embeds a URL in a sandb
 scripts/build-icons.mjs renders PNG icons from scripts/icon.svg and public/favicon.svg
 src/boot.ts             first import is app/paste.ts (paste capture before any editor exists)
 src/main.tsx            wiring, service-worker registration, window.__tracepad test hook
-src/app/                state (signals), settings, themes, commands + layers, tabs, feedback, storage
+src/app/                state (signals), settings, themes, commands + layers, tabs, feedback, storage,
+                        session (restore) + idb
 src/editor/             CodeMirror setup, languages, minimap
 src/files/              encodings, open/save/drag-drop
 src/engine/             client (worker + fallbacks), wasm wrapper, TypeScript twins
@@ -32,7 +33,8 @@ src/ui/                 Preact components
 src/styles/app.css      all styles
 src/sw.template.js      service worker source; __CACHE__ and __FILES__ are filled at build
 tests/unit              Vitest
-tests/e2e               Playwright: app, files, appearance (both builds); pwa; single; iframe; phone; smoke
+tests/e2e               Playwright: app, files, tabs, appearance (both builds); pwa; single; iframe; phone; smoke
+                        linked.ts = real file handles for tests (origin private file system)
 tests/visual            screenshot run for human review
 ```
 
@@ -74,6 +76,12 @@ Release checklist (every change ships as a version):
 - **Picker cancel**: only the input's `cancel` event means cancelled. Never use window focus; cloud-synced files can arrive seconds later.
 - **Sandboxed frames** have an opaque origin: `localStorage`/IndexedDB throw. Use the storage wrapper.
 - **Service worker**: cache name is `tracepad-<version>-<hash>`. A new worker waits; the page shows "New version available" and only then sends `skip-waiting`. The first install fires `controllerchange` too, so reload only when the user asked.
+- **Session**: IndexedDB holds the full session (handles, big text), throttled to twice a second. A write started in `pagehide` does not reliably finish, so a small synchronous localStorage journal is written on exit and the newer of the two wins on start (`src/app/session.ts`). Tabs have a stable `uid` to join the two. A newly linked handle is saved at once.
+- **Testing linked files**: Playwright cannot drive native pickers. `tests/e2e/linked.ts` swaps `showOpenFilePicker` for one returning origin-private-file-system handles, which are real handles (writable, `move()`, storable in IndexedDB). Permission prompts are simulated by overriding `FileSystemFileHandle.prototype.queryPermission`.
+- **Artifact viewers block downloads** from the frame; in a cross-origin frame Save offers "Copy all text" as well.
+- **Tab context-menu items for split and compare** are added in 0.7 and 0.8, when those features exist.
+- **Git Bash mangles `--prefix /tracepad/`**; prefix manual runs of `scripts/serve.mjs` with `MSYS_NO_PATHCONV=1`.
+- **Shell heredocs mangle backslashes** in patch scripts; write the script to a file instead.
 - **Settings** are saved on a debounce and flushed on `pagehide`, `beforeunload` and when the page becomes hidden.
 - **Large files**: JS strings stop near 512 M characters. Files over 64 MB must go to the read-only, disk-backed viewer (0.4), never into a CodeMirror document. Keep engine interfaces as bytes in, typed arrays out, chunk by chunk.
 - **Hidden lines**: when filters arrive (0.3), test hiding on 300k+ lines.

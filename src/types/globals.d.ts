@@ -11,6 +11,19 @@ interface Window {
   showSaveFilePicker?(options?: { suggestedName?: string; id?: string; types?: TpPickerType[] }): Promise<FileSystemFileHandle>;
 }
 
+interface FileSystemFileHandle {
+  /** Chromium only: renames the file in place. */
+  move?(name: string): Promise<void>;
+}
+
+interface LaunchParams {
+  files: FileSystemFileHandle[];
+}
+
+interface Window {
+  launchQueue?: { setConsumer(consumer: (params: LaunchParams) => void): void };
+}
+
 interface FileSystemHandle {
   queryPermission?(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>;
   requestPermission?(descriptor?: { mode?: 'read' | 'readwrite' }): Promise<PermissionState>;

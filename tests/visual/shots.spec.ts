@@ -4,6 +4,7 @@
 import { test } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { openApp, openSample } from '../e2e/helpers';
+import { clearDisk, openLinked, useLinkedPicker, writeDisk } from '../e2e/linked';
 
 const VIEWPORTS = [
   { name: '1920', width: 1920, height: 1080 },
@@ -58,6 +59,44 @@ for (const vp of VIEWPORTS) {
       await page.keyboard.press('Alt+W');
       await page.waitForTimeout(150);
       await shot('7-dialog');
+    });
+  }
+}
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots tabs and files ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await useLinkedPicker(page);
+      await openApp(page, th.settings);
+      await clearDisk(page);
+      await writeDisk(page, 'order-service.log', '2026-03-14 10:15:02 INFO started\n');
+      await writeDisk(page, 'application-prod.yml', 'server:\n  port: 8080\n');
+      await openSample(page);
+      await openLinked(page, ['order-service.log', 'application-prod.yml']);
+      await page.keyboard.press('Alt+N');
+      await page.keyboard.type('select * from orders where status = ?');
+      await page.keyboard.press('F2');
+      await page.getByRole('textbox', { name: /^New name for/ }).fill('slow-query-notes.sql');
+      await shot('8-rename');
+      await page.keyboard.press('Enter');
+
+      await page.getByRole('button', { name: /^Open files list/ }).click();
+      await page.waitForTimeout(150);
+      await shot('9-files');
+      await page.getByRole('button', { name: 'More actions for application-prod.yml' }).click();
+      await shot('10-menu');
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Close sidebar' }).click();
+
+      await page.addInitScript(() => {
+        FileSystemFileHandle.prototype.queryPermission = async () => 'prompt';
+      });
+      await page.getByRole('tab', { name: 'order-service.log' }).click();
+      await page.reload();
+      await page.waitForTimeout(500);
+      await shot('11-locked');
     });
   }
 }

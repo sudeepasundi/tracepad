@@ -113,3 +113,17 @@ export function Logo({ size = 20 }: { size?: number }) {
     </svg>
   );
 }
+
+export const IconMore = (p: P) => (
+  <Svg {...p}>
+    <circle cx="5" cy="12" r="1.2" />
+    <circle cx="12" cy="12" r="1.2" />
+    <circle cx="19" cy="12" r="1.2" />
+  </Svg>
+);
+export const IconUnlock = (p: P) => (
+  <Svg {...p}>
+    <rect x="5" y="11" width="14" height="9" rx="2" />
+    <path d="M8 11V8a4 4 0 0 1 7.5-2" />
+  </Svg>
+);

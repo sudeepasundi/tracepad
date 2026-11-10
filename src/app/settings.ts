@@ -12,6 +12,7 @@ export interface Settings {
   minimap: boolean;
   lineNumbers: boolean;
   sidebarWidth: number;
+  filesSort: 'order' | 'name' | 'recent' | 'type';
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -37,6 +38,7 @@ export const DEFAULTS: Settings = {
   minimap: true,
   lineNumbers: true,
   sidebarWidth: SIDEBAR_DEFAULT,
+  filesSort: 'order',
 };
 
 const KEY = 'tracepad.settings';

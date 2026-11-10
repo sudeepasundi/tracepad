@@ -2,6 +2,20 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.2.0
+
+Tabs and files.
+
+- Your tabs come back when you reopen Tracepad: names, order, the tab you were on, and unsaved text (up to about 2 MB per tab). Linked files are read again from disk. After a browser restart a linked file asks for access once, with a single button.
+- Rename any tab by double-clicking it, pressing F2, or from the right-click menu. It works for tabs that were never saved, and Save then suggests the new name. A new extension switches the syntax colouring.
+- Linked files are renamed on disk in Chrome and Edge. Where the browser cannot do that, Tracepad says so and offers to rename just the tab.
+- Drag tabs to reorder them.
+- Right-click a tab for Rename, Copy name, Move to start, Move to end, Close and Close other tabs.
+- The Open files list (Ctrl+Shift+E) is now complete: a filter box (Enter opens the first match), sorting by tab order, name, recently used or type, arrow-key navigation, rename, close, the same menu as tabs, and drag to reorder. Unsaved files and logs are marked, and the current file is highlighted.
+- Installed as an app, Tracepad can be chosen to open .log, .txt, .md, .json and .csv files.
+- When Tracepad runs inside another page that may block downloads, Save now also offers "Copy all text".
+- You are only warned when closing the page if some unsaved work could not be kept.
+
 ## 0.1.0
 
 The first release: a solid editor to build the log tools on.

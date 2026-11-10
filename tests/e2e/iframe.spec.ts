@@ -75,10 +75,33 @@ test('Open uses the basic picker straight away, and Save downloads', async ({ pa
   await page.keyboard.press('Control+End');
   await page.keyboard.type('added');
   expect(await docText(frame)).toContain('added');
-  const download = page.waitForEvent('download');
+  // Hosts may block downloads from a frame, so Save offers the clipboard as well.
   await page.keyboard.press('Control+S');
+  const dialog = app.getByRole('dialog');
+  await expect(dialog).toContainText('may block downloads');
+  await expect(dialog.getByRole('button', { name: 'Copy all text' })).toBeVisible();
+  const download = page.waitForEvent('download');
+  await dialog.getByRole('button', { name: 'Download' }).click();
   const saved = await readFile(await (await download).path());
   expect(saved.toString('utf8')).toBe('10:15:02 INFO framed\r\n10:15:03 WARN two\r\nadded');
+  await expect(app.locator('.tp-tab.is-active')).not.toHaveClass(/is-dirty/);
+});
+
+test('rename, the tab menu and the Open files list work in the frame', async ({ page }) => {
+  const app = page.frameLocator('#embedded');
+  await app.locator('.cm-content').focus();
+  await page.keyboard.type('framed text');
+  await page.keyboard.press('F2');
+  await app.getByRole('textbox', { name: /^New name for/ }).fill('framed.md');
+  await page.keyboard.press('Enter');
+  await expect(app.getByRole('tab', { name: 'framed.md' })).toBeVisible();
+  await expect(app.getByTestId('status-lang')).toHaveText('Markdown');
+  await app.getByRole('tab', { name: 'framed.md' }).click({ button: 'right' });
+  await expect(app.getByRole('menu')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await app.getByRole('button', { name: /^Open files list/ }).click();
+  await expect(app.locator('.tp-file')).toContainText('framed.md');
+  await expect(app.locator('.tp-toast-error')).toHaveCount(0);
 });
 
 test('the framed app fills the frame without scrolling the host page', async ({ page }) => {

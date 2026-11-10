@@ -3,6 +3,8 @@ import type { Encoding } from '../files/encoding';
 
 export interface Tab {
   id: number;
+  /** Stable across reloads (id is per page load); ties session records together. */
+  uid: string;
   name: string;
   /** Linked file (File System Access API). Absent for new tabs and one-time snapshots. */
   handle?: FileSystemFileHandle;
@@ -11,7 +13,17 @@ export interface Tab {
   eol: 'LF' | 'CRLF';
   lang: string;
   dirty: boolean;
+  /** Restored linked file waiting for permission; content not loaded yet. */
+  locked?: boolean;
   lastUsed: number;
+}
+
+export interface MenuItem {
+  label: string;
+  hint?: string;
+  run?: () => void;
+  disabled?: boolean;
+  separator?: boolean;
 }
 
 export interface CursorInfo {
@@ -34,6 +46,11 @@ export const sidebar = signal<SidebarPanel | null>(null);
 export const paletteOpen = signal(false);
 export const findOpen = signal<null | 'find' | 'replace'>(null);
 export const dropActive = signal(false);
+/** Which tab name is being edited in place, and where. */
+export const renaming = signal<{ id: number; where: 'tab' | 'list' } | null>(null);
+export const menu = signal<{ x: number; y: number; items: MenuItem[] } | null>(null);
+/** Bumped to move keyboard focus into the Open files filter box. */
+export const filesFocus = signal(0);
 /** 'wasm' when the Rust engine is running, 'ts' for the TypeScript fallback. */
 export const engineKind = signal<'wasm' | 'ts' | 'starting'>('starting');
 export const activeDocEmpty = signal(true);

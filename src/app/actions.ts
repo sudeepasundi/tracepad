@@ -8,8 +8,8 @@ import { findStep, openFind } from '../ui/FindBar';
 import { registerCommands, type Command } from './commands';
 import { ask, toast } from './feedback';
 import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settings';
-import { activeId, cursor, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
-import { activateTab, addTab, closeTab, cycleTab, newTab } from './tabs';
+import { activeId, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
+import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
 
 export function toggleSidebar(panel: SidebarPanel): void {
@@ -80,6 +80,17 @@ export function registerAllCommands(): void {
     { id: 'file.sample', title: 'Open the sample Spring Boot log', category: 'File', run: openSample },
     { id: 'tab.next', title: 'Next tab', category: 'Tabs', keys: ['Alt+PageDown', 'Alt+.'], run: () => cycleTab(1) },
     { id: 'tab.prev', title: 'Previous tab', category: 'Tabs', keys: ['Alt+PageUp', 'Alt+,'], run: () => cycleTab(-1) },
+    { id: 'tab.rename', title: 'Rename tab or file…', category: 'Tabs', keys: ['F2'], run: () => {
+        // In the Open files list, F2 renames the focused row; otherwise the current tab.
+        const row = document.activeElement?.closest<HTMLElement>('.tp-file[data-tab-id]');
+        if (row) startRename(Number(row.dataset.tabId), 'list');
+        else if (activeId.value != null) startRename(activeId.value, 'tab');
+      },
+    },
+    { id: 'tab.moveStart', title: 'Move tab to start', category: 'Tabs', run: () => void (activeId.value != null && moveTab(activeId.value, 0)) },
+    { id: 'tab.moveEnd', title: 'Move tab to end', category: 'Tabs', run: () => void (activeId.value != null && moveTab(activeId.value, tabs.value.length - 1)) },
+    { id: 'tab.copyName', title: 'Copy file name', category: 'Tabs', run: () => void (activeId.value != null && copyTabName(activeId.value)) },
+    { id: 'tab.closeOthers', title: 'Close other tabs', category: 'Tabs', run: () => void (activeId.value != null && closeOthers(activeId.value)) },
 
     { id: 'edit.find', title: 'Find', category: 'Edit', keys: ['Ctrl+F'], run: () => openFind('find') },
     { id: 'edit.replace', title: 'Replace', category: 'Edit', keys: ['Ctrl+H'], run: () => openFind('replace') },
@@ -107,7 +118,20 @@ export function registerAllCommands(): void {
     { id: 'view.fontBigger', title: 'Increase font size', category: 'View', keys: ['Alt+='], run: () => setFontSize(settings.value.fontSize + 1) },
     { id: 'view.fontSmaller', title: 'Decrease font size', category: 'View', keys: ['Alt+-'], run: () => setFontSize(settings.value.fontSize - 1) },
     { id: 'view.fontReset', title: 'Reset font size', category: 'View', keys: ['Alt+0'], run: () => setFontSize(DEFAULTS.fontSize) },
-    { id: 'view.files', title: 'Show open files', category: 'View', keys: ['Ctrl+Shift+E'], run: () => toggleSidebar('files') },
+    {
+      id: 'view.files',
+      title: 'Show open files',
+      category: 'View',
+      keys: ['Ctrl+Shift+E'],
+      run: () => {
+        // The shortcut always lands in the filter box; a second press closes the panel.
+        if (sidebar.value === 'files' && document.activeElement?.classList.contains('tp-files-input')) sidebar.value = null;
+        else {
+          sidebar.value = 'files';
+          filesFocus.value++;
+        }
+      },
+    },
     { id: 'view.appearance', title: 'Appearance settings', category: 'View', run: () => toggleSidebar('appearance') },
     { id: 'view.help', title: 'Help and shortcuts', category: 'View', run: () => toggleSidebar('help') },
     { id: 'view.closeSidebar', title: 'Close sidebar', category: 'View', run: () => void (sidebar.value = null) },

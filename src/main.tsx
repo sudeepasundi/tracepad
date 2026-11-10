@@ -2,6 +2,7 @@ import { render } from 'preact';
 import { registerAllCommands } from './app/actions';
 import { installKeyboard } from './app/commands';
 import { toast } from './app/feedback';
+import { hasUnstoredChanges } from './app/session';
 import { initSettings } from './app/settings';
 import { crossOriginFramed, tabs } from './app/state';
 import { getView } from './editor/editor';
@@ -32,9 +33,10 @@ window.addEventListener('tp-appearance', () => {
   }
 });
 
-// Warn before closing the page with unsaved work.
+// Unsaved work normally comes back with the session. Warn only when some of it
+// could not be kept (too large, or storage is unavailable).
 window.addEventListener('beforeunload', (e) => {
-  if (tabs.value.some((t) => t.dirty)) {
+  if (tabs.value.some((t) => t.dirty) && hasUnstoredChanges()) {
     e.preventDefault();
     e.returnValue = '';
   }

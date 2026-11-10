@@ -8,15 +8,24 @@ import { Palette } from './Palette';
 import { Rail, Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { TopBar } from './TopBar';
-import { Welcome } from './Welcome';
+import { MenuHost } from './Menu';
+import { Locked, Welcome } from './Welcome';
+import { initSessionPersistence, restoreSession } from '../app/session';
+import { installLaunchQueue } from '../files/fileio';
 
 export function App() {
   const host = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     mountEditor(host.current!);
-    if (tabs.value.length === 0) newTab();
-    document.documentElement.dataset.ready = 'true';
+    void (async () => {
+      // Bring back last session's tabs; start with an empty tab otherwise.
+      await restoreSession().catch((e) => console.error('session restore failed', e));
+      if (tabs.value.length === 0) newTab();
+      initSessionPersistence();
+      installLaunchQueue();
+      document.documentElement.dataset.ready = 'true';
+    })();
   }, []);
 
   return (
@@ -28,11 +37,13 @@ export function App() {
         <main class="tp-main">
           <div class="tp-editor-host" ref={host} />
           <Welcome />
+          <Locked />
           <FindBar />
         </main>
       </div>
       <StatusBar />
       <Palette />
+      <MenuHost />
       <DialogHost />
       <Toasts />
       <DropOverlay />
