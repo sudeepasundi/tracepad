@@ -332,7 +332,7 @@ test.describe('very large files', () => {
   test('offers the end of the file, and shows whole lines with their real line count', async ({ page }) => {
     await openViaChooser(page, [{ name: 'huge.log', mimeType: 'text/plain', buffer: Buffer.from(BIG, 'utf8') }]);
     const dialog = page.getByRole('dialog');
-    await expect(dialog).toContainText(/huge.log is 3.d MB/);
+    await expect(dialog).toContainText(/huge\.log is 3\.\d MB/);
     await expect(dialog.getByRole('button', { name: 'Open the last 256 KB' })).toBeFocused();
     await expect(dialog.getByRole('button', { name: 'Open all of it' })).toBeVisible();
     await dialog.getByRole('button', { name: 'Open the last 256 KB' }).click();
