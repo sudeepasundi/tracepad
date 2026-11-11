@@ -248,7 +248,7 @@ test.describe('preview', () => {
   test('"Edit as table" rewrites that table, aligned, and can be undone in one step', async ({ page }) => {
     await openPreview(page);
     await page.locator('.tp-md-tablebox').nth(1).getByRole('button', { name: 'Edit as table' }).click();
-    const dialog = page.getByRole('dialog', { name: 'Edit table' });
+    const dialog = page.getByRole('dialog', { name: /Edit table/ });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByRole('textbox', { name: 'Header 1' })).toBeFocused();
     await expect(dialog.getByRole('textbox', { name: 'Row 1, column 2' })).toHaveValue('eu-west-1');
@@ -468,4 +468,66 @@ test.describe('preview appearance', () => {
     expect(m.sw).toBeLessThanOrEqual(m.cw);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   });
+});
+
+test.describe('table editor with a large table', () => {
+  const cols = 12;
+  const BIG =
+    '# Big\n\nintro\n\n' +
+    ['| ' + Array.from({ length: cols }, (_, c) => `Column ${c + 1}`).join(' | ') + ' |', '| ' + Array(cols).fill('---').join(' | ') + ' |', ...Array.from({ length: 80 }, (_, r) => '| ' + Array.from({ length: cols }, (_, c) => `value ${r}-${c} with some text`).join(' | ') + ' |')].join('\n') +
+    '\n\nafter\n';
+
+  for (const [w, h] of [
+    [1920, 1080],
+    [1366, 768],
+    [900, 500],
+  ]) {
+    test(`${w}x${h}: the dialog stays on screen, centred, and the grid scrolls inside it`, async ({ page }) => {
+      await page.setViewportSize({ width: w, height: h });
+      await openMd(page, 'big.md', BIG);
+      await expect(page.getByRole('tab', { name: /big\.md/ })).toBeVisible();
+      await editor(page).click();
+      await page.keyboard.press('Alt+P');
+      await page.getByRole('button', { name: 'Edit as table' }).click();
+      const dialog = page.getByRole('dialog', { name: /Edit table/ });
+      await expect(dialog).toBeVisible();
+      await expect(dialog.locator('.tp-tedit-size')).toHaveText('80 rows, 12 columns');
+      const d = await box(dialog);
+      // Wholly on screen, with a margin, and in the middle.
+      expect(d.x).toBeGreaterThanOrEqual(8);
+      expect(d.y).toBeGreaterThanOrEqual(8);
+      expect(d.x + d.width).toBeLessThanOrEqual(w - 8);
+      expect(d.y + d.height).toBeLessThanOrEqual(h - 8);
+      expect(Math.abs(d.x + d.width / 2 - w / 2)).toBeLessThan(2);
+      expect(Math.abs(d.y + d.height / 2 - h / 2)).toBeLessThan(2);
+      // Title, tools and buttons are inside the dialog and visible without scrolling.
+      for (const name of ['Add row', 'Add column', 'Remove last row', 'Remove last column', 'Cancel', 'Save table']) {
+        const b = await box(dialog.getByRole('button', { name, exact: true }));
+        expect(b.y, name).toBeGreaterThanOrEqual(d.y);
+        expect(b.y + b.height, name).toBeLessThanOrEqual(d.y + d.height);
+        expect(b.x + b.width, name).toBeLessThanOrEqual(d.x + d.width);
+      }
+      const grid = dialog.locator('.tp-tedit-scroll');
+      const g = await box(grid);
+      expect(g.y + g.height).toBeLessThan((await box(dialog.getByRole('button', { name: 'Add row' }))).y);
+      expect(g.height).toBeGreaterThan(100);
+      const m = await grid.evaluate((el) => ({ sh: el.scrollHeight, ch: el.clientHeight, sw: el.scrollWidth, cw: el.clientWidth }));
+      expect(m.sh).toBeGreaterThan(m.ch);
+      // Nothing else scrolls: the page stays put.
+      expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight && document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      // The header row stays at the top of the grid while the rows scroll.
+      await grid.evaluate((el) => (el.scrollTop = el.scrollHeight));
+      const headCell = await box(dialog.getByRole('textbox', { name: 'Header 1', exact: true }));
+      expect(headCell.y).toBeGreaterThanOrEqual(g.y);
+      expect(headCell.y).toBeLessThan(g.y + 4);
+      const last = await box(dialog.getByRole('textbox', { name: 'Row 80, column 1', exact: true }));
+      expect(last.y + last.height).toBeLessThanOrEqual(g.y + g.height + 1);
+      // Editing the last row and saving still works.
+      await dialog.getByRole('textbox', { name: 'Row 80, column 1', exact: true }).fill('edited last');
+      await dialog.getByRole('button', { name: 'Save table' }).click();
+      await expect(dialog).toHaveCount(0);
+      expect(await docText(page)).toContain('| edited last ');
+      expect(await docText(page)).toContain('\n\nafter\n');
+    });
+  }
 });

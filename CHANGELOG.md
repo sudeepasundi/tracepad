@@ -2,6 +2,11 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.7.1
+
+- Fixed: "Edit as table" on a large table opened its editor far down the page, mostly off the screen. It now stays in the middle of the screen whatever the size of the table, and the grid scrolls inside it.
+- The table editor keeps the header row in view while you scroll, makes each column wide enough to read its values, and shows how many rows and columns the table has.
+
 ## 0.7.0
 
 Split view with snap layouts.

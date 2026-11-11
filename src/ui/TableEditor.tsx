@@ -19,6 +19,9 @@ function Grid() {
   const box = useRef<HTMLDivElement>(null);
   const cols = Math.max(1, ...rows.map((r) => r.length));
 
+  // Columns are as wide as their longest value (within reason), so cells can be read without clicking into them.
+  const widths = Array.from({ length: cols }, (_, c) => `${Math.min(46, Math.max(12, ...rows.map((r) => (r[c] ?? '').length + 5)))}ch`);
+
   useLayoutEffect(() => {
     box.current?.querySelector<HTMLInputElement>('input')?.focus();
   }, []);
@@ -54,6 +57,9 @@ function Grid() {
       <div class="tp-dialog tp-tedit" role="dialog" aria-modal="true" aria-labelledby="tp-tedit-title" ref={box}>
         <h2 class="tp-dialog-title" id="tp-tedit-title">
           Edit table
+          <span class="tp-tedit-size">
+            {rows.length - 1} {rows.length === 2 ? 'row' : 'rows'}, {cols} {cols === 1 ? 'column' : 'columns'}
+          </span>
         </h2>
         <div class="tp-tedit-scroll">
           <table class="tp-tedit-grid">
@@ -61,7 +67,7 @@ function Grid() {
               {rows.map((row, r) => (
                 <tr key={r} class={r === 0 ? 'is-head' : undefined}>
                   {Array.from({ length: cols }, (_, c) => (
-                    <td key={c}>
+                    <td key={c} style={{ minWidth: widths[c] }}>
                       <input type="text" class="tp-tedit-cell" data-r={r} data-c={c} aria-label={r === 0 ? `Header ${c + 1}` : `Row ${r}, column ${c + 1}`} spellcheck={false} autocomplete="off" value={row[c] ?? ''} onInput={(e) => set(r, c, (e.target as HTMLInputElement).value)} onKeyDown={(e) => onKey(e, r, c)} />
                     </td>
                   ))}

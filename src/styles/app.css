@@ -3280,8 +3280,12 @@ dd {
   box-sizing: border-box;
   /* The grid would otherwise grow to fit a wide table. */
   min-width: 0;
+  min-height: 0;
   width: min(1100px, calc(100vw - 32px));
-  max-height: min(760px, 100%);
+  /* Sized from the window, not from the overlay: a percentage here let a long table
+     stretch the overlay and push the dialog below the screen. */
+  max-height: min(760px, calc(100vh - 32px));
+  max-height: min(760px, calc(100dvh - 32px));
 }
 
 .tp-tedit-scroll {
@@ -3315,7 +3319,7 @@ dd {
 .tp-tedit-cell {
   box-sizing: border-box;
   width: 100%;
-  min-width: 110px;
+  min-width: 0;
   height: 30px;
   padding: 0 8px;
   border: none;
@@ -3323,6 +3327,14 @@ dd {
   color: var(--tp-text);
   font-family: var(--tp-mono);
   font-size: 12.5px;
+}
+
+/* The header row stays in view while a long table scrolls. */
+.tp-tedit-grid tr.is-head td {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  box-shadow: 0 1px 0 var(--tp-border);
 }
 
 .tp-tedit-grid tr.is-head .tp-tedit-cell {
@@ -3336,6 +3348,7 @@ dd {
 }
 
 .tp-tedit-tools {
+  flex: none;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -3775,4 +3788,22 @@ button.tp-thumb-zone:focus-visible,
     width: 62px;
     height: 48px;
   }
+}
+
+.tp-tedit .tp-dialog-title {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tp-tedit-size {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--tp-muted);
+}
+
+.tp-tedit .tp-dialog-buttons {
+  flex: none;
 }
