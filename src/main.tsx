@@ -7,6 +7,7 @@ import { initSettings } from './app/settings';
 import { activeId, crossOriginFramed, tabs } from './app/state';
 import { getView } from './editor/editor';
 import { hiddenField } from './editor/log';
+import { activeResult, results } from './app/results';
 import { getBig, rowCount } from './app/big';
 import { checkDisk } from './files/watch';
 import { startEngine } from './engine/client';
@@ -39,6 +40,11 @@ void startEngine();
     return s.doc.lineAt(s.selection.main.head).number;
   },
   lineText: (n: number) => getView().state.doc.line(n).text,
+  /** The table shown in the results panel, for tests. */
+  table: () => {
+    const r = results.value.find((x) => x.id === activeResult.value);
+    return r?.table ? { title: r.table.title, columns: r.table.columns.map((c) => c.name), rows: r.table.rows.length, total: r.table.total, first: r.table.rows[0] ?? null, ms: r.auto?.ms ?? null, patterns: r.auto?.templates.length ?? null } : null;
+  },
   /** Check linked files for changes on disk right now (normally every second or two). */
   checkDisk,
   big: () => {

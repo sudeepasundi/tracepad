@@ -6,6 +6,7 @@
 //! parity tests in `tests/unit` enforce that.
 
 pub mod log;
+pub mod mine;
 
 /// Result of one pass over a byte buffer. Field order is the wire format:
 /// the wasm export writes these as eight `f64` values in this order.
@@ -77,7 +78,7 @@ pub fn scan(bytes: &[u8]) -> ScanStats {
 /// ABI version; bump when an export changes shape.
 #[no_mangle]
 pub extern "C" fn tp_abi() -> u32 {
-    2
+    3
 }
 
 #[no_mangle]
@@ -167,6 +168,85 @@ pub unsafe extern "C" fn tp_log_len(which: u32) -> usize {
 #[no_mangle]
 pub unsafe extern "C" fn tp_log_free() {
     *std::ptr::addr_of_mut!(LOG) = None;
+}
+
+// ---- template mining: begin, feed chunks, finish, then read the two results.
+
+static mut MINER: Option<mine::Miner> = None;
+static mut MINED: Option<(Vec<u32>, Vec<u8>)> = None;
+
+/// # Safety
+/// Single-threaded use only.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_begin() {
+    *std::ptr::addr_of_mut!(MINER) = Some(mine::Miner::new());
+    *std::ptr::addr_of_mut!(MINED) = None;
+}
+
+/// Adds the messages of one stretch. `spans` holds `count` pairs of u32
+/// (start, end) into the bytes; a start of u32::MAX marks an entry to skip.
+///
+/// # Safety
+/// `ptr..ptr+len` and `spans..spans+count*8` must be readable.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_chunk(ptr: *const u8, len: usize, spans: *const u32, count: usize) {
+    let bytes = std::slice::from_raw_parts(ptr, len);
+    let spans = std::slice::from_raw_parts(spans, count * 2);
+    if let Some(m) = (*std::ptr::addr_of_mut!(MINER)).as_mut() {
+        for i in 0..count {
+            let a = spans[i * 2];
+            if a == u32::MAX {
+                m.skip();
+                continue;
+            }
+            let a = (a as usize).min(len);
+            let b = (spans[i * 2 + 1] as usize).min(len).max(a);
+            m.add(&bytes[a..b]);
+        }
+    }
+}
+
+/// # Safety
+/// Single-threaded use only.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_finish() {
+    if let Some(m) = (*std::ptr::addr_of_mut!(MINER)).take() {
+        *std::ptr::addr_of_mut!(MINED) = Some(m.finish());
+    }
+}
+
+/// 0 = template id of every entry (u32), 1 = serialised templates (bytes).
+///
+/// # Safety
+/// Valid until the next `tp_mine_begin` / `tp_mine_free`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_ptr(which: u32) -> *const u8 {
+    match (&*std::ptr::addr_of!(MINED), which) {
+        (Some(r), 0) => r.0.as_ptr() as *const u8,
+        (Some(r), 1) => r.1.as_ptr(),
+        _ => std::ptr::null(),
+    }
+}
+
+/// Number of elements in result `which`.
+///
+/// # Safety
+/// See `tp_mine_ptr`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_len(which: u32) -> usize {
+    match (&*std::ptr::addr_of!(MINED), which) {
+        (Some(r), 0) => r.0.len(),
+        (Some(r), 1) => r.1.len(),
+        _ => 0,
+    }
+}
+
+/// # Safety
+/// Invalidates every pointer returned by `tp_mine_ptr`.
+#[no_mangle]
+pub unsafe extern "C" fn tp_mine_free() {
+    *std::ptr::addr_of_mut!(MINED) = None;
+    *std::ptr::addr_of_mut!(MINER) = None;
 }
 
 #[cfg(test)]

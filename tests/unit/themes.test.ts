@@ -30,7 +30,7 @@ describe('every theme x accent combination (6 x 6)', () => {
         // Text on accent buttons.
         expect(contrast(p['--tp-on-accent'], p['--tp-accent'])).toBeGreaterThanOrEqual(4.5);
         // Accent-coloured text on every surface it can appear on.
-        for (const bg of fills) expect(contrast(p['--tp-accent-text'], bg)).toBeGreaterThanOrEqual(4.5);
+        for (const bg of [...fills, p['--tp-accent-soft']]) expect(contrast(p['--tp-accent-text'], bg)).toBeGreaterThanOrEqual(4.5);
         // Body and secondary text.
         for (const bg of [...fills, p['--tp-accent-soft']]) {
           expect(contrast(p['--tp-text'], bg)).toBeGreaterThanOrEqual(7);

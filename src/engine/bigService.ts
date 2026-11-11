@@ -68,6 +68,10 @@ export async function bigGroups(key: string, progress?: Progress): Promise<Error
   return h ? h.index.groups(progress) : [];
 }
 
+export function bigIndexOf(key: string): BigIndex | undefined {
+  return held.get(key)?.index;
+}
+
 export function bigDrop(key: string): void {
   held.delete(key);
 }

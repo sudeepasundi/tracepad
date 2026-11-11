@@ -12,6 +12,8 @@ import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settin
 import { activeId, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
 import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
+import { countDuplicates, findInTabs, panelMaximised, panelOpen, results, runAutoTables, runExtract } from './results';
+import { toggleFullscreen } from '../ui/fullscreen';
 import { clearFilters, filterFocus, filterToTraceAtCursor, foldTraces, forceLog, jumpToError } from './logs';
 
 export function toggleSidebar(panel: SidebarPanel): void {
@@ -150,6 +152,28 @@ export function registerAllCommands(): void {
     { id: 'log.unfold', title: 'Unfold all stack traces', category: 'Log', run: () => foldTraces(false) },
     { id: 'log.force', title: 'Treat this tab as a log', category: 'Log', run: () => forceLog(true) },
     { id: 'log.unforce', title: 'Stop treating this tab as a log', category: 'Log', run: () => forceLog(false) },
+    { id: 'tables.auto', title: 'Auto tables: one table per log pattern', category: 'Tables', keys: ['Alt+T'], run: () => void runAutoTables() },
+    { id: 'tables.times', title: 'Extract response times', category: 'Tables', run: () => void runExtract({ preset: 'times' }) },
+    { id: 'tables.sql', title: 'Extract SQL statements', category: 'Tables', run: () => void runExtract({ preset: 'sql' }) },
+    { id: 'tables.kafka', title: 'Extract Kafka offsets', category: 'Tables', run: () => void runExtract({ preset: 'kafka' }) },
+    { id: 'tables.ips', title: 'Extract IP addresses', category: 'Tables', run: () => void runExtract({ preset: 'ips' }) },
+    { id: 'tables.timestamps', title: 'Extract timestamps', category: 'Tables', run: () => void runExtract({ preset: 'timestamps' }) },
+    { id: 'tables.custom', title: 'Extract with a custom pattern…', category: 'Tables', run: () => void (sidebar.value = 'tables') },
+    { id: 'tables.find', title: 'Find in all open tabs…', category: 'Tables', keys: ['Ctrl+Shift+F'], run: () => void findInTabs() },
+    { id: 'tables.duplicates', title: 'Count duplicate lines', category: 'Tables', run: countDuplicates },
+    {
+      id: 'panel.toggle',
+      title: 'Show or hide the results panel',
+      category: 'View',
+      keys: ['Alt+J'],
+      run: () => {
+        if (!results.value.length) toast('There are no results yet. Try Auto tables (Alt+T) on a log.', { ms: 3500 });
+        else panelOpen.value = !panelOpen.value;
+      },
+    },
+    { id: 'panel.maximise', title: 'Maximise or restore the results panel', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), (panelMaximised.value = !panelMaximised.value))) },
+    { id: 'panel.fullscreen', title: 'Results panel full screen', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), toggleFullscreen('panel'))) },
+    { id: 'view.tables', title: 'Tables panel', category: 'View', run: () => toggleSidebar('tables') },
     { id: 'view.insights', title: 'Log insights', category: 'View', run: () => toggleSidebar('insights') },
     { id: 'view.highlights', title: 'Highlight rules', category: 'View', run: () => toggleSidebar('highlights') },
     { id: 'view.palette', title: 'Command palette', category: 'View', keys: ['Ctrl+Shift+P', 'F1'], run: () => void (paletteOpen.value = !paletteOpen.value) },

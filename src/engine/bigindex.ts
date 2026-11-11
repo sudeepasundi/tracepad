@@ -366,6 +366,17 @@ export class BigIndex {
     return { lineStart, level: this.level.buf.subarray(l0, l1), flags: this.flags.buf.subarray(l0, l1), ts: this.ts.buf.subarray(l0, l1), fields, summary };
   }
 
+  /** Visits the whole file as stretches of whole entries, each with its own bytes and index. */
+  async walk(fn: (s: { bytes: Uint8Array; ix: LogIndex; lineBase: number; entryBase: number }) => void, progress?: Progress): Promise<void> {
+    const summary = this.summary();
+    const lines = this.lines;
+    for (const [l0, l1, e0, e1] of this.stretches(this.chunkBytes, 1 << 30)) {
+      const bytes = await this.read(this.lineStart.buf[l0], l1 < lines ? this.lineStart.buf[l1] : this.size);
+      fn({ bytes, ix: this.slice(l0, l1, e0, e1, summary), lineBase: l0, entryBase: e0 });
+      progress?.(l1, lines);
+    }
+  }
+
   async filter(spec: FilterSpec, progress?: Progress): Promise<FilterResult> {
     const lines = this.lines;
     const mask = new Uint8Array(lines);

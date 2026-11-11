@@ -139,3 +139,21 @@ export const IconMarker = (p: P) => (
     <path d="M12 7l5 5M4 21h16" />
   </Svg>
 );
+
+export const IconTable = (p: P) => (
+  <Svg {...p}>
+    <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+    <path d="M3.5 9.5h17M3.5 14.5h17M9.5 9.5v10" />
+  </Svg>
+);
+export const IconMaximise = (p: P) => (
+  <Svg {...p}>
+    <rect x="4" y="5" width="16" height="14" rx="2" />
+    <path d="M4 9h16" />
+  </Svg>
+);
+export const IconExpand = (p: P) => (
+  <Svg {...p}>
+    <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
+  </Svg>
+);

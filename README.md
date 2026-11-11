@@ -6,10 +6,11 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 Tracepad is being built in milestones. This page lists what works today and what is planned; the [changelog](CHANGELOG.md) has the detail for each release.
 
-## What works today (0.4)
+## What works today (0.5)
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
 - **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
+- **Tables from logs**: Auto tables learns the message patterns in a log and builds one table per pattern, with columns named from the surrounding words, number statistics, count by value, copy as a real table or CSV, and filter-the-log-to-these-lines. Extract presets cover response times, SQL, Kafka offsets, IPs and timestamps, plus your own regular expression with named groups. Results stay open in a resizable bottom panel that can go full screen or pop out.
 - **Large files**: anything over 64 MB opens in a read-only viewer that reads from disk on demand, so hundreds of megabytes open in seconds with the same timeline, filters and search. Above 1 GB you can open just the last 500 MB.
 - **Live files**: linked files update when they change on disk (appended lines in place, rewrites reloaded, a prompt if you have unsaved edits), and Follow keeps the end in view like `tail -f`.
 - **Session restore**: tabs, their order and unsaved text come back after a reload or restart; linked files are re-read from disk (after a browser restart they ask for access once).
@@ -26,7 +27,6 @@ Tracepad is being built in milestones. This page lists what works today and what
 
 | Version | Adds |
 |---|---|
-| 0.5 | Extract to table, automatic tables from log patterns, results panel |
 | 0.6 | Pasted tables to Markdown, Markdown preview |
 | 0.7 | Split view with snap layouts |
 | 0.8 | Compare (diff) view, Copilot hand-off with secret masking |

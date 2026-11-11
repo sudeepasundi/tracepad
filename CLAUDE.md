@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 4 (0.1.0 to 0.4.0) are shipped; next is 0.5 (extract to table, auto tables from log templates, results panel).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 5 (0.1.0 to 0.5.0) are shipped; next is 0.6 (pasted tables to Markdown, Markdown preview, shared full-screen mode for the preview).
 
 ## Stack
 
@@ -16,7 +16,8 @@ The approved plan and milestone list live in `README.md` ("Planned") and `CHANGE
 ```
 index.html              entry; links marked data-pwa are stripped from the single-file build
 vite.config.ts          both builds, CSP injection, service-worker generation
-engine-rs/src/lib.rs    Rust engine exports (C ABI); log.rs = log parser (twin: src/engine/logparse.ts)
+engine-rs/src/lib.rs    Rust engine exports (C ABI); log.rs = log parser (twin: src/engine/logparse.ts);
+                        mine.rs = template miner (twin: src/engine/mine.ts)
 scripts/build-wasm.mjs  cargo build -> src/engine/engine.wasm (git-ignored)
 scripts/gen-log.mjs     deterministic Spring Boot log generator (sample + big test files)
 scripts/serve.mjs       static server for tests; --frame embeds a URL in a sandboxed iframe
@@ -30,7 +31,8 @@ src/files/              encodings, open/save/drag-drop, bigopen (large files), w
 src/viewer/             BigViewer (virtual, read-only large-file viewer) and its find box
 src/engine/             client (worker + fallbacks), wasm wrapper, TypeScript twins (scan, logparse),
                         logfilter (filters, grouping; TypeScript only), logService (worker-side store),
-                        bigindex (chunked disk-backed index) + bigService
+                        bigindex (chunked disk-backed index) + bigService,
+                        tables (auto tables, column naming, extract presets; TypeScript only) + tableService
 src/workers/            engine worker
 src/ui/                 Preact components
 src/styles/app.css      all styles
@@ -91,6 +93,9 @@ Release checklist (every change ships as a version):
 - **Navigator**: while a large-file tab is on screen the viewer registers itself with `setNavigator` in editor.ts, so `goToLine`, `currentLine` and `focusEditor` (used by F8, the timeline, Go to line, dialogs) work for both views. `activateTab` clears it when switching to an editor tab.
 - **Testing large-file code** uses `largeFileMB: 0.001` (and `tailAskMB`/`tailMB`) in stored settings so ordinary fixtures go through the viewer; `biglog.spec.ts` generates a real 150 MB log. Generated logs live in `tmp/` (git-ignored).
 - **Files changing on disk** (`src/files/watch.ts`): handles are polled (1 s when followed, else 2 s, only while visible). A baseline of size, mtime and the last 64 bytes tells "appended" from "rewritten". `rebase(id)` must be called after anything Tracepad itself writes, or its own save looks like an outside change. Tests trigger a check with `__tracepad.checkDisk()`.
+- **Auto tables**: mining is Rust with a TypeScript twin (`mine.rs` / `mine.ts`): tokenise at spaces, mask variable tokens, group by masked tokens, then merge templates of equal length and equal first token that differ in at most 40% of positions. Tables, column names and extraction are TypeScript in the worker (`tables.ts`) and work on "stretches" (`Walk`), so the same code serves editor tabs and large files. The last line of a stretch may carry its line break: strip \n and \r when taking a line end.
+- **Results panel** state is in `src/app/results.ts`; the panel, virtual table and Tables sidebar are in `src/ui/`. `src/ui/fullscreen.ts` is the one full-screen mode (requests it on the document root, locks Escape where the browser allows, registers the lowest-priority layer); reuse it for the preview and compare views.
+- **Accent text on the soft accent fill** (selected rows) is part of the palette contract and is unit-tested; a real failure there was caught by the measured-contrast test.
 - **Windows clipboard** turns \n into \r\n; tests that read the clipboard must normalise.
 - **Logs**: `src/app/logs.ts` decides which tab is a log, parses the tab on screen (debounced after edits) and applies ONE shared filter to whichever log is shown. The page keeps only small arrays (`PageIndex`); bytes and the full index stay in the worker. Timestamps are wall-clock milliseconds exactly as written in the log (zone ignored) so typed times match what is on screen.
 - **Regex filters use JavaScript syntax** and run in TypeScript in the worker, on purpose: the same pattern must behave the same in the find box and the filter, and Rust regex has no look-around. Parsing is the Rust part.

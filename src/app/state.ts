@@ -47,7 +47,7 @@ export interface CursorInfo {
   selectedChars: number;
 }
 
-export type SidebarPanel = 'files' | 'insights' | 'highlights' | 'appearance' | 'help';
+export type SidebarPanel = 'files' | 'insights' | 'tables' | 'highlights' | 'appearance' | 'help';
 
 export const tabs = signal<Tab[]>([]);
 export const activeId = signal<number | null>(null);

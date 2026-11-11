@@ -141,3 +141,24 @@ test('the large-file viewer works on a phone: fits, scrolls by touch-sized steps
   await expect(page.locator('.tp-big-row').nth(1).locator('.tp-big-text')).toContainText('step 50');
   await fits(page);
 });
+
+test('auto tables on a phone: patterns stack above the table and nothing is wider than the screen', async ({ page }) => {
+  await openSample(page);
+  await page.getByRole('button', { name: 'Search commands', exact: true }).tap();
+  await page.getByRole('combobox', { name: 'Search commands' }).fill('Auto tables');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.tp-vt-row').first()).toBeVisible();
+  const pats = await box(page.locator('.tp-pats'));
+  const table = await box(page.locator('.tp-table-area'));
+  expect(pats.y + pats.height).toBeLessThanOrEqual(table.y + 1);
+  for (const b of [pats, table, await box(page.locator('.tp-panel'))]) {
+    expect(b.x).toBeGreaterThanOrEqual(0);
+    expect(b.x + b.width).toBeLessThanOrEqual(W + 0.5);
+  }
+  expect(table.height).toBeGreaterThan(90);
+  await page.locator('.tp-pat', { hasText: 'Created order' }).tap();
+  await expect(page.locator('.tp-vt-th .tp-vt-name', { hasText: 'orderId' })).toBeVisible();
+  await page.getByRole('button', { name: 'Maximise results panel' }).tap();
+  expect((await box(page.locator('.tp-table-area'))).height).toBeGreaterThan(300);
+  await fits(page);
+});

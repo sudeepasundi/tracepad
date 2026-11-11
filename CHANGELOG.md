@@ -2,6 +2,21 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.5.0
+
+Tables from logs.
+
+- Auto tables (the "Auto tables" button above a log, or Alt+T): Tracepad learns the message patterns in the log by itself and builds one table per pattern. Nothing to configure.
+- The patterns are listed with their counts and level colour, with the variable parts highlighted; pick one to see its table beside the list. The list can be filtered.
+- Columns are named from the words around the values: "took 84ms" becomes "took (ms)", "orderId=90001" becomes orderId, "moved from PAID to SHIPPED by ravi" gives from / to / by, "CPU_USAGE=64%" becomes "CPU_USAGE (%)". Time, level, thread and logger appear when they vary, plus the trace ID. Error tables add "exception" and "caused by". JSON logs add their other fields. Access logs get one request table with a route column such as /api/orders/{id}.
+- Rows stay in file order, and clicking a row takes you to that line. Number columns show min, average, p95 and max.
+- For each table: Count by value, Copy as table (pastes as a real table into Excel, Outlook, Teams and Word), Copy CSV, Open as new tab, Filter log to these lines, and Pop out table into its own window.
+- Extract (sidebar, Tables): response times, SQL statements, Kafka offsets, IP addresses, timestamps, or your own regular expression where named groups become columns.
+- A results panel at the bottom keeps several results open as tabs. Drag its top edge to resize, double-click to reset, maximise it, or go full screen (Esc leaves, after any open dialog or palette has closed).
+- Find in all open tabs (Ctrl+Shift+F) and Count duplicate lines.
+- All of this also works on large files.
+- Limits: a table shows at most 200,000 rows (the count is still exact); copying is limited to 50,000 rows and the pop-out window to 20,000.
+
 ## 0.4.0
 
 Large files and live files.

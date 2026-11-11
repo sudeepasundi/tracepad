@@ -33,6 +33,11 @@ export function logGroups(key: string): ErrorGroup[] {
   return h ? groupErrors(h.bytes, h.index) : [];
 }
 
+/** The in-memory log of an editor tab, if this key has one. */
+export function heldLog(key: string): Held | undefined {
+  return held.get(key);
+}
+
 export function logDrop(key: string): void {
   held.delete(key);
 }

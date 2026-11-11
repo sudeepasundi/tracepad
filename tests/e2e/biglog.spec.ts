@@ -76,6 +76,16 @@ test('300k lines: parse, filter, scroll and clear stay quick', async ({ page }) 
     return h.lineText(h.cursorLine());
   })).toContain('ERROR');
 
+  // Auto tables on the whole log.
+  t0 = Date.now();
+  await page.keyboard.press('Alt+T');
+  await expect(page.locator('.tp-vt-row').first()).toBeVisible({ timeout: 60_000 });
+  const tablesMs = Date.now() - t0;
+  const mined = await page.evaluate(() => (window as unknown as { __tracepad: { table(): { ms: number; patterns: number; rows: number } } }).__tracepad.table());
+  console.log(`auto tables: ${total.toLocaleString('en-US')} entries -> ${mined.patterns} patterns, mined in ${mined.ms} ms, first table (${mined.rows.toLocaleString('en-US')} rows) on screen after ${tablesMs} ms`);
+  expect(mined.ms).toBeLessThan(4000);
+  expect(mined.patterns).toBeLessThan(120);
+
   console.log(`300k lines (${mb.toFixed(0)} MB): open+parse ${openMs} ms, level filter ${filterMs} ms, jumps ${scrollMs} ms, clear ${clearMs} ms`);
   expect(openMs).toBeLessThan(30_000);
   expect(filterMs).toBeLessThan(8_000);

@@ -9,6 +9,8 @@ import { Rail, Sidebar } from './Sidebar';
 import { StatusBar } from './StatusBar';
 import { TopBar } from './TopBar';
 import { LogBar } from './LogBar';
+import { ResultsPanel } from './ResultsPanel';
+import { panelMaximised, panelOpen, results } from '../app/results';
 import { BigViewer } from '../viewer/BigViewer';
 import { initWatcher } from '../files/watch';
 import { MenuHost } from './Menu';
@@ -40,7 +42,7 @@ export function App() {
       <div class="tp-body">
         <Rail />
         <Sidebar />
-        <main class="tp-main">
+        <main class={`tp-main${panelOpen.value && results.value.length && panelMaximised.value ? ' is-panel-max' : ''}`}>
           <LogBar />
           <div class="tp-editor-area">
             <div class="tp-editor-host" ref={host} />
@@ -49,6 +51,7 @@ export function App() {
             <Locked />
             <FindBar />
           </div>
+          <ResultsPanel />
         </main>
       </div>
       <StatusBar />

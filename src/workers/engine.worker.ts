@@ -4,6 +4,8 @@ import { bigAppend, bigDrop, bigFilter, bigFind, bigGroups, bigOpen, bigText } f
 import type { FilterSpec } from '../engine/logfilter';
 import { logDrop, logFilter, logGroups, logParse } from '../engine/logService';
 import { scanTs } from '../engine/scan';
+import { tabExtract, tabMine, tabTable, tablesDrop } from '../engine/tableService';
+import type { ExtractSpec } from '../engine/tables';
 import { WasmEngine } from '../engine/wasm';
 
 export type EngineRequest =
@@ -18,7 +20,10 @@ export type EngineRequest =
   | { id: number; op: 'big.text'; key: string; from: number; to: number }
   | { id: number; op: 'big.filter'; key: string; spec: FilterSpec }
   | { id: number; op: 'big.find'; key: string; source: string; flags: string; limit: number }
-  | { id: number; op: 'big.groups'; key: string };
+  | { id: number; op: 'big.groups'; key: string }
+  | { id: number; op: 'tab.mine'; key: string }
+  | { id: number; op: 'tab.table'; key: string; which: number | 'access' }
+  | { id: number; op: 'tab.extract'; key: string; spec: ExtractSpec };
 
 export type EngineResponse = { id: number; ok: true; result: unknown } | { id: number; ok: false; error: string } | { id: number; progress: [number, number] };
 
@@ -75,6 +80,7 @@ ctx.onmessage = async (e) => {
       case 'log.drop':
         logDrop(m.key);
         bigDrop(m.key);
+        tablesDrop(m.key);
         result = true;
         break;
       case 'big.open': {
@@ -106,6 +112,15 @@ ctx.onmessage = async (e) => {
       }
       case 'big.groups':
         result = await bigGroups(m.key, progress);
+        break;
+      case 'tab.mine':
+        result = await tabMine(m.key, wasm, progress);
+        break;
+      case 'tab.table':
+        result = await tabTable(m.key, m.which, progress);
+        break;
+      case 'tab.extract':
+        result = await tabExtract(m.key, m.spec, progress);
         break;
     }
     ctx.postMessage({ id: m.id, ok: true, result }, transfer);

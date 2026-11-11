@@ -256,6 +256,9 @@ function Filters({ info }: { info: LogInfo }) {
             Clear filters
           </button>
         )}
+        <button type="button" class="tp-btn tp-btn-small tp-lf-tables" title="Learn the message patterns in this log and build a table for each (Alt+T)" onClick={() => runCommand('tables.auto')}>
+          Auto tables
+        </button>
         <span class="tp-lf-nav">
           <button type="button" class="tp-btn-icon" aria-label="Previous error" title="Previous error (Shift+F8)" onClick={() => runCommand('log.prevError')}>
             <IconUp size={15} />

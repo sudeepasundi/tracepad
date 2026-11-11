@@ -19,6 +19,8 @@ export interface Settings {
   highlights: HighlightRule[];
   /** Files larger than this open in the read-only large-file viewer. */
   largeFileMB: number;
+  /** Height of the bottom results panel in pixels. */
+  panelHeight: number;
   /** Above this size, offer to show only the end of the file. */
   tailAskMB: number;
   /** How much of the end is shown then. */
@@ -52,6 +54,7 @@ export const DEFAULTS: Settings = {
   ownPackage: '',
   highlights: [],
   largeFileMB: 64,
+  panelHeight: 340,
   tailAskMB: 1024,
   tailMB: 500,
 };

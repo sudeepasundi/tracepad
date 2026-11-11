@@ -95,8 +95,9 @@ export function buildPalette(theme: Theme, accent: Accent): Record<string, strin
   const whiteWorks = contrast(accent.base, '#ffffff') >= 2.6;
   const solid = whiteWorks ? ensureContrast(accent.base, ['#ffffff'], 4.6) : accent.base;
   const onAccent = whiteWorks ? '#ffffff' : ensureContrast('#1b1400', [solid], 4.6);
-  const accentText = ensureContrast(accent.base, fills, 4.6);
   const soft = mix(theme.bg, accent.base, theme.dark ? 0.22 : 0.14);
+  // Accent-coloured text also appears on the soft accent fill (selected rows).
+  const accentText = ensureContrast(accent.base, [...fills, soft], 4.6);
   const softer = mix(theme.bg, accent.base, theme.dark ? 0.11 : 0.07);
   const lvl = (c: string) => ensureContrast(c, [...fills, soft], 4.6);
   const syn = (dark: string, light: string) => ensureContrast(theme.dark ? dark : light, [theme.bg], 4.6);

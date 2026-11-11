@@ -143,3 +143,29 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots tables ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await openApp(page, th.settings);
+      await openSample(page);
+      await page.keyboard.press('Alt+T');
+      await page.locator('.tp-vt-row').first().waitFor();
+      await page.locator('.tp-pat', { hasText: 'Created order' }).click();
+      await page.waitForTimeout(400);
+      await shot('14-auto-tables');
+      await page.getByRole('button', { name: 'Results full screen' }).click();
+      await page.locator('.tp-pat', { hasText: 'status=<*> took' }).first().click();
+      await page.waitForTimeout(400);
+      await shot('15-tables-fullscreen');
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', { name: 'Tables and extract' }).click();
+      await page.locator('.tp-sidebar').getByRole('button', { name: /Response times/ }).click();
+      await page.locator('.tp-vt-row').first().waitFor();
+      await page.waitForTimeout(300);
+      await shot('16-extract');
+    });
+  }
+}

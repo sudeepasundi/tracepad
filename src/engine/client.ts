@@ -10,6 +10,8 @@ import type { BigDelta } from './bigindex';
 import { bigAppend, bigDrop, bigFilter, bigFind, bigGroups, bigOpen, bigText, type BigOpened } from './bigService';
 import { logDrop, logFilter, logGroups, logParse } from './logService';
 import { scanTs, type ScanStats } from './scan';
+import { tabExtract, tabMine, tabTable, tablesDrop, type MineSummary } from './tableService';
+import type { ExtractSpec, Table } from './tables';
 
 type OnProgress = (done: number, total: number) => void;
 type Pending = { resolve: (v: unknown) => void; reject: (e: Error) => void; progress?: OnProgress };
@@ -138,7 +140,32 @@ export function dropLog(key: string): void {
   else {
     logDrop(key);
     bigDrop(key);
+    tablesDrop(key);
   }
+}
+
+// --------------------------------------------------------------------- tables
+
+export type { MineSummary };
+
+/** Learns the message templates of a log (auto tables). */
+export async function mineTab(key: string, progress?: OnProgress): Promise<MineSummary | null> {
+  await startEngine();
+  if (!worker) return tabMine(key, null, progress);
+  return call<MineSummary | null>({ op: 'tab.mine', key }, [], progress);
+}
+
+/** The table of one template, or of an access log's requests. null = mine again first. */
+export async function tableTab(key: string, which: number | 'access', progress?: OnProgress): Promise<Table | null> {
+  await startEngine();
+  if (!worker) return tabTable(key, which, progress);
+  return call<Table | null>({ op: 'tab.table', key, which }, [], progress);
+}
+
+export async function extractTab(key: string, spec: ExtractSpec, progress?: OnProgress): Promise<Table | null> {
+  await startEngine();
+  if (!worker) return tabExtract(key, spec, progress);
+  return call<Table | null>({ op: 'tab.extract', key, spec }, [], progress);
 }
 
 // ---------------------------------------------------------------- large files

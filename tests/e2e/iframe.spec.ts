@@ -112,3 +112,21 @@ test('the framed app fills the frame without scrolling the host page', async ({ 
   expect(Math.round(status.width)).toBe(vp.width);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
 });
+
+test('auto tables, the results panel and its full screen work inside the frame', async ({ page }) => {
+  const app = page.frameLocator('#embedded');
+  await openSample(app);
+  await app.getByRole('button', { name: 'Auto tables', exact: true }).click();
+  await expect(app.locator('.tp-pats-count')).toHaveText('42 patterns from 370 entries');
+  await app.locator('.tp-pat', { hasText: 'Created order' }).click();
+  await expect(app.locator('.tp-vt-th .tp-vt-name', { hasText: 'customerId' })).toBeVisible();
+  // Real full screen is not allowed in the frame: the panel fills the frame instead.
+  await app.getByRole('button', { name: 'Results full screen' }).click();
+  const vp = page.viewportSize()!;
+  const b = (await app.locator('.tp-panel').boundingBox())!;
+  expect([Math.round(b.x), Math.round(b.y), Math.round(b.width), Math.round(b.height)]).toEqual([0, 0, vp.width, vp.height]);
+  await app.locator('.tp-vt').click();
+  await page.keyboard.press('Escape');
+  await expect(app.locator('.tp-panel')).not.toHaveClass(/is-fullscreen/);
+  await expect(app.locator('.tp-toast-error')).toHaveCount(0);
+});
