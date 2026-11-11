@@ -27,6 +27,8 @@ export interface Tab {
   missing?: boolean;
   /** Restored linked file waiting for permission; content not loaded yet. */
   locked?: boolean;
+  /** The Markdown preview is shown beside this tab. */
+  preview?: boolean;
   lastUsed: number;
 }
 

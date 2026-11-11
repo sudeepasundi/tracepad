@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'preact/hooks';
 import { runCommand } from '../app/commands';
-import { activeId, isMac, renaming, tabs } from '../app/state';
+import { activeId, activeTab, isMac, renaming, tabs } from '../app/state';
 import { activateTab, closeTab, openTabMenu, startRename } from '../app/tabs';
-import { IconClose, IconFolder, IconPlus, IconSave, IconSearch, Logo } from './icons';
+import { IconClose, IconFolder, IconPlus, IconPreview, IconSave, IconSearch, Logo } from './icons';
 import { RenameInput } from './RenameInput';
 import { consumeDragClick, startReorder } from './reorder';
 
@@ -101,6 +101,11 @@ export function TopBar() {
         <IconPlus size={17} />
       </button>
       <div class="tp-topbar-actions">
+        {activeTab.value?.lang === 'Markdown' && (
+          <button type="button" class="tp-btn-icon" aria-label="Toggle preview" aria-pressed={!!activeTab.value.preview} title="Markdown preview (Alt+P)" onClick={() => runCommand('view.preview')}>
+            <IconPreview size={17} />
+          </button>
+        )}
         <button type="button" class="tp-btn-icon" aria-label="Open a file" title="Open files (Ctrl+O)" onClick={() => runCommand('file.open')}>
           <IconFolder size={17} />
         </button>

@@ -130,3 +130,38 @@ test('auto tables, the results panel and its full screen work inside the frame',
   await expect(app.locator('.tp-panel')).not.toHaveClass(/is-fullscreen/);
   await expect(app.locator('.tp-toast-error')).toHaveCount(0);
 });
+
+test('pasted tables, the preview and its full screen work inside the frame', async ({ page }) => {
+  const frame = page.frameLocator('#embedded');
+  const inner = page.frames().find((f) => f.url().includes('tracepad.html'))!;
+  await frame.locator('.cm-content').focus();
+  // The clipboard API is not available in the frame; a real paste event still carries the data.
+  await inner.evaluate(() => {
+    const data = new DataTransfer();
+    data.setData('text/plain', 'Service\tCalls\norders\t1200\nbilling\t87');
+    data.setData('text/html', '<table><tr><th>Service</th><th>Calls</th></tr><tr><td>orders</td><td>1200</td></tr><tr><td>billing</td><td>87</td></tr></table>');
+    document.querySelector('.cm-content')!.dispatchEvent(new ClipboardEvent('paste', { clipboardData: data, bubbles: true, cancelable: true }));
+  });
+  await expect.poll(() => docText(inner)).toContain('| Service | Calls |');
+  await frame.locator('.cm-content').click();
+  await page.keyboard.press('Alt+P');
+  await expect(frame.locator('.tp-preview')).toBeVisible();
+  await expect(frame.locator('.tp-md table tbody tr')).toHaveCount(2);
+  await frame.locator('.tp-md th', { hasText: 'Calls' }).click();
+  await expect(frame.locator('.tp-md table tbody tr').first()).toContainText('billing');
+  // Full screen is not allowed in the sandbox: the preview fills the frame instead.
+  await frame.getByRole('button', { name: 'Preview full screen' }).click();
+  await expect(frame.locator('.tp-preview')).toHaveClass(/is-fullscreen/);
+  const size = await inner.evaluate(() => {
+    const r = document.querySelector('.tp-preview')!.getBoundingClientRect();
+    return { w: r.width, h: r.height, vw: innerWidth, vh: innerHeight };
+  });
+  expect(size.w).toBe(size.vw);
+  expect(size.h).toBe(size.vh);
+  await frame.locator('.tp-md-tablebox').getByRole('button', { name: 'Edit as table' }).click();
+  await frame.getByRole('textbox', { name: 'Row 1, column 2' }).fill('1300');
+  await frame.getByRole('button', { name: 'Save table' }).click();
+  await expect.poll(() => docText(inner)).toContain('| orders  |  1300 |');
+  await frame.getByRole('button', { name: 'Leave full screen' }).click();
+  await expect(frame.locator('.tp-preview')).not.toHaveClass(/is-fullscreen/);
+});

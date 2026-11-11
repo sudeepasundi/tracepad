@@ -9,11 +9,11 @@ import { findStep, openFind } from '../ui/FindBar';
 import { registerCommands, type Command } from './commands';
 import { ask, toast } from './feedback';
 import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settings';
-import { activeId, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
+import { activeId, activeTab, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
 import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
 import { countDuplicates, findInTabs, panelMaximised, panelOpen, results, runAutoTables, runExtract } from './results';
-import { toggleFullscreen } from '../ui/fullscreen';
+import { exitFullscreen, fullscreen, toggleFullscreen } from '../ui/fullscreen';
 import { clearFilters, filterFocus, filterToTraceAtCursor, foldTraces, forceLog, jumpToError } from './logs';
 
 export function toggleSidebar(panel: SidebarPanel): void {
@@ -53,7 +53,25 @@ export function setFontSize(size: number): void {
   getView().requestMeasure();
 }
 
-export function toggleSetting(key: 'wordWrap' | 'minimap' | 'lineNumbers'): void {
+/** Alt+P shows or hides the preview; Alt+Shift+P opens it (if needed) and switches full screen. */
+export function togglePreview(full: boolean): void {
+  const tab = activeTab.value;
+  if (!tab || tab.locked) return;
+  if (tab.big) {
+    toast('The preview is not available for large files.', { ms: 3000 });
+    return;
+  }
+  if (full) {
+    if (!tab.preview) patchTab(tab.id, { preview: true });
+    toggleFullscreen('preview');
+    return;
+  }
+  if (tab.preview && fullscreen.value === 'preview') exitFullscreen();
+  patchTab(tab.id, { preview: !tab.preview });
+  if (tab.preview) focusEditor();
+}
+
+export function toggleSetting(key: 'wordWrap' | 'minimap' | 'lineNumbers' | 'pasteTables'): void {
   updateSettings({ [key]: !settings.value[key] });
   applyEditorSettings();
   window.dispatchEvent(new CustomEvent('tp-appearance'));
@@ -173,6 +191,9 @@ export function registerAllCommands(): void {
     },
     { id: 'panel.maximise', title: 'Maximise or restore the results panel', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), (panelMaximised.value = !panelMaximised.value))) },
     { id: 'panel.fullscreen', title: 'Results panel full screen', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), toggleFullscreen('panel'))) },
+    { id: 'view.preview', title: 'Markdown preview', category: 'View', keys: ['Alt+P'], run: () => togglePreview(false) },
+    { id: 'view.previewFull', title: 'Markdown preview full screen', category: 'View', keys: ['Alt+Shift+P'], run: () => togglePreview(true) },
+    { id: 'view.pasteTables', title: 'Toggle converting pasted tables to Markdown', category: 'View', run: () => toggleSetting('pasteTables') },
     { id: 'view.tables', title: 'Tables panel', category: 'View', run: () => toggleSidebar('tables') },
     { id: 'view.insights', title: 'Log insights', category: 'View', run: () => toggleSidebar('insights') },
     { id: 'view.highlights', title: 'Highlight rules', category: 'View', run: () => toggleSidebar('highlights') },

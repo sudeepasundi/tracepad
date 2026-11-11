@@ -25,6 +25,10 @@ export interface Settings {
   tailAskMB: number;
   /** How much of the end is shown then. */
   tailMB: number;
+  /** Turn pasted tables and rich text into Markdown (Markdown and plain-text tabs only). */
+  pasteTables: boolean;
+  /** Width of the Markdown preview, as a percentage of the editor area. */
+  previewWidth: number;
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -57,6 +61,8 @@ export const DEFAULTS: Settings = {
   panelHeight: 340,
   tailAskMB: 1024,
   tailMB: 500,
+  pasteTables: true,
+  previewWidth: 50,
 };
 
 const KEY = 'tracepad.settings';

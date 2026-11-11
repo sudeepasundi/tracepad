@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 5 (0.1.0 to 0.5.0) are shipped; next is 0.6 (pasted tables to Markdown, Markdown preview, shared full-screen mode for the preview).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 6 (0.1.0 to 0.6.0) are shipped; next is 0.7 (split view with snap layouts, timestamp scroll sync, filters and find across panes).
 
 ## Stack
 
@@ -38,7 +38,7 @@ src/ui/                 Preact components
 src/styles/app.css      all styles
 src/sw.template.js      service worker source; __CACHE__ and __FILES__ are filled at build
 tests/unit              Vitest
-tests/e2e               Playwright: app, files, tabs, appearance (both builds); pwa; single; iframe; phone; smoke
+tests/e2e               Playwright: app, files, tabs, logs, big, tables, markdown, appearance (both builds); pwa; single; iframe; phone; smoke
                         linked.ts = real file handles for tests (origin private file system)
 tests/visual            screenshot run for human review
 ```
@@ -109,5 +109,8 @@ Release checklist (every change ships as a version):
 - **Vite inline worker + wasm**: the worker is inlined (`?worker&inline`), so it cannot resolve asset URLs. The main thread loads the wasm bytes and posts them to the worker.
 - **Local Firefox**: Playwright's Firefox may fail to launch on some Windows machines (`spawn UNKNOWN`); the Firefox smoke tests still run in CI.
 - **GitHub Actions** runs sometimes sit queued; re-dispatching usually unsticks them. Tag pushes may be blocked, which is why the Release workflow creates the tag through the release API.
+- **Pasted tables** (`src/app/pastetables.ts`): only tabs whose language is Markdown or Plain text convert (CSV has its own language name so it never does). HTML is converted by `src/engine/htmlmd.ts` (DOMParser, inert), plain text by `src/engine/tabletext.ts`, which must return null for prose. The undo action inserts the original text with \r\n normalised: CodeMirror counts a line break as one character, so using the raw length throws "Selection points outside of document". Phone keyboards may insert the clipboard without a paste event; `pasteBurst` (an input handler) covers that.
+- **Preview** (`src/ui/Preview.tsx`, renderer `src/app/markdown.ts`): markdown-it with `html: false`, then DOMPurify; remote images are replaced by a note. Blocks carry `data-line` for scroll sync and "Edit as table" (tables also `data-end`). The scroll container spans the whole preview and the column is centred in it. Each table is wrapped in a fit-content box with its buttons in flow above it, so they end at that table's corner; the table has `min-width: 100%` because the buttons can be wider than a small table. `Tab.preview` is not stored in the session.
+- **Tests on an empty tab**: the welcome card covers the editor, so focus `.cm-content` instead of clicking it.
 - **Full screen** (0.6+): request it on the document root so toasts, menus and dialogs stay visible; handle Esc through the layer registry.
 - **Copilot** (0.8): Microsoft 365 Copilot cannot be iframed; use a popup.

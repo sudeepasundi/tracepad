@@ -5,7 +5,7 @@
 import { signal } from '@preact/signals';
 import { registerLayer } from '../app/commands';
 
-export type FullscreenTarget = 'panel';
+export type FullscreenTarget = 'panel' | 'preview';
 export const fullscreen = signal<FullscreenTarget | null>(null);
 
 type KeyboardLock = { lock?(keys: string[]): Promise<void>; unlock?(): void };

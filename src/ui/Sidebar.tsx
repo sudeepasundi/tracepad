@@ -202,6 +202,7 @@ function AppearancePanel() {
         <Switch label="Word wrap" on={s.wordWrap} flip={() => toggleSetting('wordWrap')} />
         <Switch label="Minimap" on={s.minimap} flip={() => toggleSetting('minimap')} />
         <Switch label="Line numbers" on={s.lineNumbers} flip={() => toggleSetting('lineNumbers')} />
+        <Switch label="Convert pasted tables" on={s.pasteTables} flip={() => toggleSetting('pasteTables')} />
       </Section>
     </div>
   );

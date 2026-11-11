@@ -13,11 +13,13 @@ import { checkDisk } from './files/watch';
 import { startEngine } from './engine/client';
 import { installDrop } from './files/fileio';
 import { App } from './ui/App';
+import { installPasteTables } from './app/pastetables';
 
 initSettings();
 registerAllCommands();
 installKeyboard();
 installDrop();
+installPasteTables();
 render(<App />, document.getElementById('app')!);
 void startEngine();
 
@@ -45,6 +47,7 @@ void startEngine();
     const r = results.value.find((x) => x.id === activeResult.value);
     return r?.table ? { title: r.table.title, columns: r.table.columns.map((c) => c.name), rows: r.table.rows.length, total: r.table.total, first: r.table.rows[0] ?? null, ms: r.auto?.ms ?? null, patterns: r.auto?.templates.length ?? null } : null;
   },
+  scrollEditor: (top: number) => void (getView().scrollDOM.scrollTop = top),
   /** Check linked files for changes on disk right now (normally every second or two). */
   checkDisk,
   big: () => {

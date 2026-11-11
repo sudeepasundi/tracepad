@@ -2,6 +2,22 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.6.0
+
+Tables that survive pasting, and a Markdown preview.
+
+- Paste a table from an AI chat, a web page or Excel into a Markdown or plain-text tab and it arrives as a clean, aligned Markdown table instead of a jumble. Headings, lists, links, bold text and code blocks from rich text are kept as Markdown in Markdown tabs.
+- Plain text works too: tab-separated, comma-separated and space-aligned columns (such as kubectl output) become tables, including headers like "p95 (ms)" and headers of several words.
+- Ordinary sentences and code are never touched, and code, log and CSV files never convert anything. Each conversion shows a notice with "Paste plain text instead". The switch "Convert pasted tables" is under Appearance.
+- On phones, where the keyboard may insert the clipboard without a paste event, a table arriving in one go is recognised the same way.
+- Markdown preview (Alt+P, or the button in the top bar on Markdown files): live as you type, and scrolling either side moves the other to the same place.
+- Tables in the preview sort when you click a header (up, down, back to the original order; numbers sort as numbers). Each table has "Copy table" (pastes as a real table into Excel, Outlook, Teams and Word) and "Edit as table", a small grid editor that writes the table back neatly aligned.
+- "Copy as rich text" copies the whole preview with its formatting for Teams, Outlook or Word.
+- Drag the preview's edge to resize it (20% to 85%; double-click for half and half). The width is remembered.
+- Preview full screen: the button, a double-click on its header, or Alt+Shift+P. Wider column, larger text, the file name on top. Esc leaves.
+- The preview is safe: HTML written in the document is shown as text, nothing in it can run, and pictures from the internet are not loaded (Tracepad makes no network requests).
+- Limits: the preview is for editor tabs (not large files) and shows the first 1.5 million characters of very long documents; whether the preview is open is not remembered across reloads.
+
 ## 0.5.0
 
 Tables from logs.

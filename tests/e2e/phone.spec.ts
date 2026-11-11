@@ -162,3 +162,65 @@ test('auto tables on a phone: patterns stack above the table and nothing is wide
   expect((await box(page.locator('.tp-table-area'))).height).toBeGreaterThan(300);
   await fits(page);
 });
+
+test('a table inserted by the keyboard in one go (no paste event) becomes a Markdown table', async ({ page }) => {
+  await page.locator('.cm-content').focus();
+  // Phone keyboards insert clipboard text as ordinary input.
+  await page.keyboard.insertText('Service\tCalls\tp95 (ms)\norders\t1200\t340\nbilling\t87\t1210');
+  await expect.poll(() => docText(page)).toContain('| Service |');
+  expect(await docText(page)).toMatch(/\| billing \| +87 \| +1210 \|/);
+  // Ordinary typing and ordinary sentences are left alone.
+  await page.keyboard.press('Control+A');
+  await page.keyboard.insertText('We restarted it, twice, and then it worked.');
+  await expect.poll(() => docText(page)).toBe('We restarted it, twice, and then it worked.');
+  await fits(page);
+});
+
+test('the Markdown preview covers the editor and fits the screen, also in full screen', async ({ page }) => {
+  await page.locator('.cm-content').focus();
+  await page.keyboard.insertText('# Notes\n\nSome text that is long enough to wrap on a phone screen, so wrapping can be checked here.\n\n| Service name | Calls made | p95 (ms) | Owner team | Region |\n| --- | --- | --- | --- | --- |\n| orders | 1200 | 340 | Core platform | eu-west-1 |\n');
+  await page.getByRole('button', { name: 'Search commands', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Search commands' }).fill('Markdown preview');
+  await page.keyboard.press('Enter');
+  const pv = page.locator('.tp-preview');
+  await expect(pv).toBeVisible();
+  await expect(page.locator('.tp-md h1')).toHaveText('Notes');
+  const area = await box(page.locator('.tp-editor-area'));
+  const b = await box(pv);
+  // It takes the whole editor area (beside the rail).
+  expect(b.x).toBeCloseTo(area.x, 0);
+  expect(b.width).toBeCloseTo(area.width, 0);
+  expect(b.height).toBeCloseTo(area.height, 0);
+  // The wide table scrolls inside its own box; the page and the preview do not scroll sideways.
+  const m = await page.locator('.tp-preview-scroll').evaluate((el) => ({ sw: el.scrollWidth, cw: el.clientWidth }));
+  expect(m.sw).toBeLessThanOrEqual(m.cw);
+  const head = await box(page.locator('.tp-preview-head'));
+  for (const btn of await page.locator('.tp-preview-actions button').all()) {
+    const bb = await box(btn);
+    expect(bb.x).toBeGreaterThanOrEqual(0);
+    expect(bb.x + bb.width).toBeLessThanOrEqual(head.x + head.width);
+  }
+  const tools = await box(page.locator('.tp-md-tool').last());
+  expect(tools.x + tools.width).toBeLessThanOrEqual(W);
+  await fits(page);
+  await page.getByRole('button', { name: 'Preview full screen' }).click();
+  await expect(pv).toHaveClass(/is-fullscreen/);
+  expect((await box(pv)).width).toBe(W);
+  await fits(page);
+  // The table editor stays on the screen; the grid scrolls inside it.
+  await page.getByRole('button', { name: 'Edit as table' }).click();
+  const dlg = await box(page.getByRole('dialog', { name: 'Edit table' }));
+  expect(dlg.x).toBeGreaterThanOrEqual(0);
+  expect(dlg.x + dlg.width).toBeLessThanOrEqual(W);
+  for (const name of ['Cancel', 'Save table', 'Add row', 'Remove last column']) {
+    const bb = await box(page.getByRole('dialog', { name: 'Edit table' }).getByRole('button', { name, exact: true }));
+    expect(bb.x, name).toBeGreaterThanOrEqual(dlg.x);
+    expect(bb.x + bb.width, name).toBeLessThanOrEqual(dlg.x + dlg.width);
+    expect(bb.y + bb.height, name).toBeLessThanOrEqual(dlg.y + dlg.height);
+  }
+  await fits(page);
+  await page.getByRole('dialog', { name: 'Edit table' }).getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: 'Close preview' }).click();
+  await expect(pv).toHaveCount(0);
+  await expect(page.locator('.cm-content')).toBeVisible();
+});

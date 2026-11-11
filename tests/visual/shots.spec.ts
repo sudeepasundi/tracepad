@@ -3,7 +3,7 @@
 // live in tests/e2e/appearance.spec.ts.
 import { test } from '@playwright/test';
 import { mkdirSync, readFileSync } from 'node:fs';
-import { openApp, openSample } from '../e2e/helpers';
+import { openApp, openSample, openViaChooser, useBasicFilePickers } from '../e2e/helpers';
 import { clearDisk, openLinked, useLinkedPicker, writeDisk } from '../e2e/linked';
 
 const VIEWPORTS = [
@@ -166,6 +166,76 @@ for (const vp of VIEWPORTS) {
       await page.locator('.tp-vt-row').first().waitFor();
       await page.waitForTimeout(300);
       await shot('16-extract');
+    });
+  }
+}
+
+const NOTES = `# Checkout latency incident
+
+Orders slowed down after the **14:05 deploy**. The cause was a missing index on \`order_items\`; see the [runbook](https://example.com/runbook).
+
+## Slowest endpoints
+
+| Endpoint | Calls | p95 (ms) | Errors | Owner team |
+| --- | ---: | ---: | ---: | --- |
+| /api/orders | 12400 | 2340 | 118 | Core platform |
+| /api/orders/{id}/items | 8800 | 1980 | 64 | Core platform |
+| /api/billing/run | 87 | 1210 | 3 | Payments |
+| /api/search | 45000 | 95 | 0 | Discovery |
+
+## What we did
+
+1. Rolled back the deploy at 14:31.
+2. Added the index and deployed again.
+
+- [x] restart the workers
+- [x] confirm p95 is back under 300 ms
+- [ ] write the customer note
+
+> Lesson: run the slow-query report before every schema change.
+
+\`\`\`sql
+CREATE INDEX idx_order_items_order ON order_items (order_id);
+\`\`\`
+
+## Environment
+
+| Key | Value |
+| --- | --- |
+| region | eu-west-1 |
+| pods | 12 |
+
+${Array.from({ length: 12 }, (_, i) => `### Follow-up ${i + 1}\n\nA short paragraph about follow-up ${i + 1}, long enough to show how ordinary text wraps in the preview column.\n`).join('\n')}`;
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots markdown ${vp.name} ${th.name}`, async ({ page, context }) => {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await useBasicFilePickers(page);
+      await openApp(page, th.settings);
+      await page.locator('.cm-content').focus();
+      await page.evaluate(async () => {
+        const html = '<table><tr><th>Endpoint</th><th>Calls</th><th>p95 (ms)</th></tr><tr><td>/api/orders</td><td>12400</td><td>2340</td></tr><tr><td>/api/search</td><td>45000</td><td>95</td></tr></table>';
+        await navigator.clipboard.write([new ClipboardItem({ 'text/plain': new Blob(['x'], { type: 'text/plain' }), 'text/html': new Blob([html], { type: 'text/html' }) })]);
+      });
+      await page.keyboard.press('Control+V');
+      await page.locator('.tp-toast').waitFor();
+      await shot('17-pasted-table');
+      await openViaChooser(page, [{ name: 'incident-notes.md', mimeType: 'text/plain', buffer: Buffer.from(NOTES) }]);
+      await page.getByRole('tab', { name: /incident-notes/ }).waitFor();
+      await page.getByRole('button', { name: 'Toggle preview' }).click();
+      await page.locator('.tp-md table').first().waitFor();
+      await page.locator('.tp-md th', { hasText: 'p95' }).click();
+      await page.waitForTimeout(700);
+      await shot('18-preview');
+      await page.getByRole('button', { name: 'Preview full screen' }).click();
+      await page.waitForTimeout(400);
+      await shot('19-preview-fullscreen');
+      await page.locator('.tp-md-tablebox').first().getByRole('button', { name: 'Edit as table' }).click();
+      await page.waitForTimeout(300);
+      await shot('20-table-editor');
     });
   }
 }

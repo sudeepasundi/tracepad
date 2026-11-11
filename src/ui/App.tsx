@@ -3,6 +3,8 @@ import { sidebar, tabs } from '../app/state';
 import { newTab } from '../app/tabs';
 import { mountEditor } from '../editor/editor';
 import { FindBar } from './FindBar';
+import { Preview } from './Preview';
+import { TableEditor } from './TableEditor';
 import { DialogHost, DropOverlay, Toasts } from './Overlays';
 import { Palette } from './Palette';
 import { Rail, Sidebar } from './Sidebar';
@@ -45,11 +47,14 @@ export function App() {
         <main class={`tp-main${panelOpen.value && results.value.length && panelMaximised.value ? ' is-panel-max' : ''}`}>
           <LogBar />
           <div class="tp-editor-area">
-            <div class="tp-editor-host" ref={host} />
-            <BigViewer />
-            <Welcome />
-            <Locked />
-            <FindBar />
+            <div class="tp-editor-pane">
+              <div class="tp-editor-host" ref={host} />
+              <BigViewer />
+              <Welcome />
+              <Locked />
+              <FindBar />
+            </div>
+            <Preview />
           </div>
           <ResultsPanel />
         </main>
@@ -57,6 +62,7 @@ export function App() {
       <StatusBar />
       <Palette />
       <MenuHost />
+      <TableEditor />
       <DialogHost />
       <Toasts />
       <DropOverlay />

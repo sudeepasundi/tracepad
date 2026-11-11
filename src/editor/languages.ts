@@ -27,6 +27,7 @@ const LANGS: Lang[] = [
   { name: 'JavaScript', exts: ['js', 'mjs', 'cjs', 'jsx'], load: () => javascript({ jsx: true }) },
   { name: 'TypeScript', exts: ['ts', 'tsx'], load: () => javascript({ typescript: true, jsx: true }) },
   { name: 'Properties', exts: ['properties', 'ini', 'conf', 'env'], load: () => StreamLanguage.define(properties) },
+  { name: 'CSV', exts: ['csv', 'tsv'], load: () => [] },
   { name: 'Shell', exts: ['sh', 'bash'], load: () => StreamLanguage.define(shell) },
 ];
 

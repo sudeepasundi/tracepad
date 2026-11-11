@@ -157,3 +157,8 @@ export const IconExpand = (p: P) => (
     <path d="M9 4H4v5M15 4h5v5M9 20H4v-5M15 20h5v-5" />
   </Svg>
 );
+export const IconPreview = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 5h18v14H3zM12 5v14M15 9h3M15 12h3M15 15h2" />
+  </Svg>
+);

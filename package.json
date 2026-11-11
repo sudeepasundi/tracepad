@@ -1,6 +1,6 @@
 {
   "name": "tracepad",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "A browser text editor for backend developers: logs, tables and big files, fully offline.",
   "license": "MIT",
@@ -36,12 +36,16 @@
     "@codemirror/view": "^6.43.15",
     "@lezer/highlight": "^1.2.5",
     "@preact/signals": "^2.11.4",
+    "dompurify": "^3.4.17",
+    "markdown-it": "^15.0.3",
     "preact": "^11.2.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",
     "@preact/preset-vite": "^2.10.6",
+    "@types/markdown-it": "^14.2.0",
     "@types/node": "^26.6.6",
+    "happy-dom": "^21.0.4",
     "typescript": "^7.0.2",
     "vite": "^8.3.7",
     "vite-plugin-singlefile": "^2.3.4",
