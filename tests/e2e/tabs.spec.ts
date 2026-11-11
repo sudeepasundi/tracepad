@@ -123,7 +123,7 @@ test.describe('reorder and tab menu', () => {
     await makeTabs(page, ['a.txt', 'b.txt', 'c.txt']);
     await page.getByRole('tab', { name: 'a.txt' }).click({ button: 'right' });
     const menu = page.getByRole('menu');
-    await expect(menu.getByRole('menuitem')).toHaveText([/Rename/, 'Copy name', 'Move to start', 'Move to end', /Close/, 'Close other tabs']);
+    await expect(menu.getByRole('menuitem')).toHaveText([/Rename/, 'Copy name', /Show beside/, 'Back to one editor', 'Move to start', 'Move to end', /Close/, 'Close other tabs']);
     await expect(menu.getByRole('menuitem', { name: 'Move to start' })).toHaveAttribute('aria-disabled', 'true');
     // The menu opens at the pointer, over the tab it belongs to.
     const m = await box(menu);

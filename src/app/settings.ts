@@ -2,6 +2,7 @@ import { effect, signal } from '@preact/signals';
 import { loadJSON, saveJSON } from './storage';
 import type { HighlightRule } from '../editor/log';
 import { buildPalette, findAccent, findTheme } from './themes';
+import { DEFAULT_SIZES, type LayoutId } from './layouts';
 
 export interface Settings {
   theme: string;
@@ -29,6 +30,12 @@ export interface Settings {
   pasteTables: boolean;
   /** Width of the Markdown preview, as a percentage of the editor area. */
   previewWidth: number;
+  /** Divider positions per split layout, as fractions of the editor area. */
+  splitSizes: Record<LayoutId, number[]>;
+  /** How split panes scroll together. */
+  syncScroll: 'time' | 'line' | 'off';
+  /** The split that was on screen (tab uids per zone), to bring back after a reload. */
+  splitLayout: { layout: LayoutId; uids: string[] } | null;
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -63,6 +70,9 @@ export const DEFAULTS: Settings = {
   tailMB: 500,
   pasteTables: true,
   previewWidth: 50,
+  splitSizes: DEFAULT_SIZES,
+  syncScroll: 'time',
+  splitLayout: null,
 };
 
 const KEY = 'tracepad.settings';

@@ -196,3 +196,34 @@ test('Copy as table, Copy CSV and the preview copies work inside the frame', asy
   expect(clip.text.split('\n')[0]).toBe('line,time,thread,orderId,customerId,items,total,trace');
   await expect(app.locator('.tp-toast-error')).toHaveCount(0);
 });
+
+test('split view works inside the frame: layouts, Snap Assist, typing per pane, dividers', async ({ page }) => {
+  const app = page.frameLocator('#embedded');
+  const inner = page.frames().find((f) => f.url().includes('tracepad.html'))!;
+  const state = () => inner.evaluate(() => (window as unknown as { __tracepad: { panes(): { layout: string; tabs: (string | null)[]; focused: number } } }).__tracepad.panes());
+  await openSample(app);
+  await app.getByRole('button', { name: 'New tab' }).click();
+  await app.locator('.cm-content').first().focus();
+  await page.keyboard.type('scratch');
+  await app.getByRole('button', { name: 'Split layouts' }).click();
+  await app.getByRole('button', { name: 'Top and bottom, place 2 of 2' }).click();
+  expect(await state()).toEqual({ layout: 'rows2', tabs: [null, 'untitled-1.txt'], focused: 1 });
+  await app.getByRole('region', { name: 'Choose a file for pane 1' }).getByRole('button', { name: /sample-spring-boot/ }).click();
+  expect((await state()).tabs).toEqual(['sample-spring-boot.log', 'untitled-1.txt']);
+  await expect(app.locator('.tp-pane[data-pane="0"] .cm-content')).toContainText('INFO');
+  await app.locator('.tp-pane[data-pane="1"] .cm-content').click();
+  await page.keyboard.press('Control+End');
+  await page.keyboard.type(' pad');
+  expect(await docText(inner)).toBe('scratch pad');
+  // Divider drag inside the frame.
+  const d = (await app.getByRole('separator', { name: 'Resize panes' }).boundingBox())!;
+  const before = (await app.locator('.tp-pane[data-pane="0"]').boundingBox())!.height;
+  await page.mouse.move(d.x + d.width * 0.3, d.y + d.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(d.x + d.width * 0.3, d.y + d.height / 2 + 100, { steps: 5 });
+  await page.mouse.up();
+  expect((await app.locator('.tp-pane[data-pane="0"]').boundingBox())!.height).toBeCloseTo(before + 100, -1);
+  await page.keyboard.press('Control+\\');
+  expect((await state()).layout).toBe('single');
+  await expect(app.locator('.tp-toast-error')).toHaveCount(0);
+});

@@ -6,10 +6,11 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 Tracepad is being built in milestones. This page lists what works today and what is planned; the [changelog](CHANGELOG.md) has the detail for each release.
 
-## What works today (0.6)
+## What works today (0.7)
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
 - **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
+- **Split view with snap layouts**: up to four files in five layouts, picked from thumbnails or by dragging a tab onto large drop zones. Panes scroll together by timestamp (or by line), and filters and Ctrl+F apply to every pane.
 - **Tables that survive pasting**: a table copied from an AI chat, a web page or Excel lands in a Markdown or plain-text tab as an aligned Markdown table; tab-, comma- and space-separated text is recognised too. Prose and code are left alone, and "Paste plain text instead" is one click away.
 - **Markdown preview** (Alt+P): live, scroll-synced, safe (no HTML runs, no remote images load). Click a table header to sort, copy a table or the whole document as rich text for Teams, Outlook and Word, edit a table in a grid, resize by dragging, and go full screen (Alt+Shift+P).
 - **Tables from logs**: Auto tables learns the message patterns in a log and builds one table per pattern, with columns named from the surrounding words, number statistics, count by value, copy as a real table or CSV, and filter-the-log-to-these-lines. Extract presets cover response times, SQL, Kafka offsets, IPs and timestamps, plus your own regular expression with named groups. Results stay open in a resizable bottom panel that can go full screen or pop out.
@@ -29,7 +30,6 @@ Tracepad is being built in milestones. This page lists what works today and what
 
 | Version | Adds |
 |---|---|
-| 0.7 | Split view with snap layouts |
 | 0.8 | Compare (diff) view, Copilot hand-off with secret masking |
 
 ### How large is large?

@@ -4,6 +4,8 @@ import { activeId, activeTab, isMac, renaming, tabs } from '../app/state';
 import { activateTab, closeTab, openTabMenu, startRename } from '../app/tabs';
 import { IconClose, IconFolder, IconPlus, IconPreview, IconSave, IconSearch, Logo } from './icons';
 import { RenameInput } from './RenameInput';
+import { isSplit, paneOf } from '../app/panes';
+import { SplitMenu } from './SplitMenu';
 import { consumeDragClick, startReorder } from './reorder';
 
 export function TopBar() {
@@ -44,7 +46,7 @@ export function TopBar() {
               data-tab-id={t.id}
               tabIndex={t.id === active ? 0 : -1}
               aria-selected={t.id === active}
-              class={`tp-tab${t.id === active ? ' is-active' : ''}${t.dirty ? ' is-dirty' : ''}${editing ? ' is-renaming' : ''}`}
+              class={`tp-tab${t.id === active ? ' is-active' : ''}${t.dirty ? ' is-dirty' : ''}${editing ? ' is-renaming' : ''}${isSplit.value && paneOf(t.id) >= 0 ? ' is-shown' : ''}`}
               title={editing ? undefined : `${t.name}${t.handle ? ' (linked to the file on disk)' : ''}\nDouble-click to rename, drag to reorder`}
               onPointerDown={(e) => {
                 if (e.button === 1) {
@@ -101,6 +103,7 @@ export function TopBar() {
         <IconPlus size={17} />
       </button>
       <div class="tp-topbar-actions">
+        <SplitMenu />
         {activeTab.value?.lang === 'Markdown' && (
           <button type="button" class="tp-btn-icon" aria-label="Toggle preview" aria-pressed={!!activeTab.value.preview} title="Markdown preview (Alt+P)" onClick={() => runCommand('view.preview')}>
             <IconPreview size={17} />

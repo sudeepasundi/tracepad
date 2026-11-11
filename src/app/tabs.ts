@@ -1,10 +1,11 @@
-import { createDoc, docLength, focusEditor, removeDoc, replaceDoc, setNavigator, setTabLanguage, showTab } from '../editor/editor';
+import { createDoc, docLength, focusEditor, removeDoc, replaceDoc, setTabLanguage } from '../editor/editor';
 import { languageName } from '../editor/languages';
 import type { Encoding } from '../files/encoding';
 import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab, saveTab } from '../files/fileio';
 import { copyToClipboard } from './clipboard';
 import { ask, toast } from './feedback';
+import { isSplit, paneOf, placeTab, showBeside, tabClosed, unsplit } from './panes';
 import { activeId, menu, newTabId, nextUntitledName, patchTab, renaming, tabs, type MenuItem, type Tab } from './state';
 
 export interface NewTab {
@@ -61,11 +62,9 @@ export function newTab(): number {
 
 export function activateTab(id: number): void {
   if (!tabs.value.some((t) => t.id === id)) return;
-  activeId.value = id;
+  // Focuses the pane that shows it, or shows it in the pane that has focus.
+  placeTab(id);
   patchTab(id, { lastUsed: Date.now() });
-  showTab(id);
-  // Leaving a large-file tab: keyboard focus goes back to the editor, not to the viewer that is about to go.
-  if (!tabs.value.find((t) => t.id === id)?.big) setNavigator(null);
   focusEditor();
 }
 
@@ -90,12 +89,13 @@ export async function closeTab(id: number): Promise<boolean> {
   const index = list.findIndex((t) => t.id === id);
   const rest = list.filter((t) => t.id !== id);
   tabs.value = rest;
-  if (activeId.value === id) {
-    if (rest.length) activateTab(rest[Math.min(index, rest.length - 1)].id);
-    else {
-      activeId.value = null;
-      newTab();
-    }
+  if (paneOf(id) >= 0) {
+    // In a split the pane goes away; with one editor the neighbouring tab takes its place.
+    const next = rest.length ? rest[Math.min(index, rest.length - 1)].id : null;
+    tabClosed(id, isSplit.value ? null : next);
+    if (activeId.value != null) focusEditor();
+    else if (!rest.length) newTab();
+    else activateTab(rest[Math.min(index, rest.length - 1)].id);
   }
   removeDoc(id);
   return true;
@@ -213,6 +213,9 @@ export function tabMenuItems(id: number, where: 'tab' | 'list'): MenuItem[] {
   return [
     { label: 'Rename…', hint: 'F2', run: () => startRename(id, where) },
     { label: 'Copy name', run: () => void copyTabName(id) },
+    { separator: true, label: '' },
+    { label: 'Show beside', hint: 'Ctrl+\\', disabled: list.length < 2 && !isSplit.value, run: () => showBeside(id) },
+    { label: 'Back to one editor', disabled: !isSplit.value, run: unsplit },
     { separator: true, label: '' },
     { label: 'Move to start', disabled: index <= 0, run: () => moveTab(id, 0) },
     { label: 'Move to end', disabled: index === list.length - 1, run: () => moveTab(id, list.length - 1) },

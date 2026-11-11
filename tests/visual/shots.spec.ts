@@ -239,3 +239,62 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const at = (sec: number) => `2026-03-14 10:${pad2(Math.floor(sec / 60))}:${pad2(sec % 60)}.000`;
+const ORDERS_LOG = Array.from({ length: 900 }, (_, i) => `${at(i)} ${i % 40 === 7 ? 'ERROR' : i % 9 === 2 ? 'WARN ' : 'INFO '} [orders,${(0x9f3a1c00 + i).toString(16)}] com.acme.orders.OrderService - order ${90000 + i} step ${i}`).join('\n') + '\n';
+const BILLING_LOG = Array.from({ length: 300 }, (_, i) => `${at(1 + i * 3)} ${i % 25 === 3 ? 'ERROR' : 'INFO '} [billing,${(0x77aa0000 + i).toString(16)}] com.acme.billing.InvoiceJob - invoice ${4000 + i} took ${20 + ((i * 37) % 400)}ms`).join('\n') + '\n';
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots split ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await useBasicFilePickers(page);
+      await openApp(page, th.settings);
+      const files = [
+        { name: 'orders.log', text: ORDERS_LOG },
+        { name: 'billing.log', text: BILLING_LOG },
+        { name: 'incident-notes.md', text: NOTES },
+        { name: 'application.yml', text: 'server:\n  port: 8080\nspring:\n  datasource:\n    url: jdbc:postgresql://db:5432/orders\n' },
+      ];
+      await openViaChooser(page, files.map((x) => ({ name: x.name, mimeType: 'text/plain', buffer: Buffer.from(x.text) })));
+      await page.getByRole('tab', { name: 'application.yml' }).waitFor();
+      await page.getByRole('tab', { name: 'billing.log' }).click();
+      await page.getByRole('tab', { name: 'orders.log' }).click();
+      await page.locator('.tp-logbar[data-log-status="ready"]').waitFor();
+      await page.getByRole('button', { name: 'Split layouts' }).click();
+      await page.waitForTimeout(200);
+      await shot('21-split-picker');
+      await page.getByRole('button', { name: 'Side by side, place 1 of 2' }).click();
+      await page.waitForTimeout(300);
+      await shot('22-snap-assist');
+      await page.locator('.tp-assist-card', { hasText: 'billing.log' }).click();
+      await page.locator('.tp-pane[data-pane="1"] .cm-line').first().waitFor();
+      await page.waitForTimeout(600);
+      await page.evaluate(() => (window as unknown as { __tracepad: { scrollTab(n: string, l: number): void } }).__tracepad.scrollTab('orders.log', 400));
+      await page.waitForTimeout(500);
+      await shot('23-split-two-logs');
+      if (vp.width > 720) {
+        // Dragging a tab: the snap bar and the outline.
+        const tabBox = (await page.getByRole('tab', { name: 'incident-notes.md' }).boundingBox())!;
+        const area = (await page.locator('.tp-editor-area').boundingBox())!;
+        await page.mouse.move(tabBox.x + 40, tabBox.y + 10);
+        await page.mouse.down();
+        await page.mouse.move(area.x + area.width / 2, area.y + area.height / 2, { steps: 6 });
+        await page.locator('.tp-snapbar').waitFor();
+        const zone = (await page.locator('.tp-snapbar [data-snap-layout="grid4"][data-snap-zone="3"]').boundingBox()) ?? { x: area.x + 600, y: area.y + 60, width: 10, height: 10 };
+        await page.mouse.move(zone.x + zone.width / 2, zone.y + zone.height / 2, { steps: 6 });
+        await page.waitForTimeout(200);
+        await shot('24-snap-drag');
+        await page.mouse.up();
+        await page.locator('.tp-assist-card', { hasText: 'application.yml' }).first().click();
+      } else {
+        await page.getByRole('button', { name: 'Split layouts' }).click();
+        await page.getByRole('button', { name: 'Three columns, place 3 of 3' }).click();
+      }
+      await page.waitForTimeout(500);
+      await shot('25-split-many');
+    });
+  }
+}

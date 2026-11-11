@@ -2,7 +2,8 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { runCommand } from '../app/commands';
 import { clearFilters, filterFocus, indexFor, jumpToTime, logFilter, logInfo, patchFilter, toggleLevel, type LogInfo } from '../app/logs';
-import { activeTab } from '../app/state';
+import { activeId, tabs, type Tab } from '../app/state';
+import { focusPane, paneOf, visibleTabs } from '../app/panes';
 import type { PageIndex } from '../engine/client';
 import { isEmptyFilter, parseTime } from '../engine/logfilter';
 import { LEVEL_NAMES, LV } from '../engine/logparse';
@@ -299,12 +300,16 @@ function Filters({ info }: { info: LogInfo }) {
 }
 
 export function LogBar() {
-  const tab = activeTab.value;
+  // The focused pane's log; with a split, another pane's log when the focused file is not one.
+  // The bar must not come and go as focus moves between panes: that would shift every pane.
+  const shown = visibleTabs.value.map((id) => tabs.value.find((t) => t.id === id)).filter((t): t is Tab => !!t?.isLog && !!logInfo.value[t.id]);
+  const tab = shown.find((t) => t.id === activeId.value) ?? shown[0];
   const info = tab ? logInfo.value[tab.id] : undefined;
-  if (!tab?.isLog || !info) return null;
+  if (!tab || !info) return null;
   const ix = indexFor(tab.id);
+  const own = tab.id === activeId.value;
   return (
-    <div class="tp-logbar" data-log-version={info.version} data-log-status={info.status}>
+    <div class="tp-logbar" data-log-version={info.version} data-log-status={info.status} data-log-tab={tab.name} onPointerDownCapture={own ? undefined : () => focusPane(paneOf(tab.id))}>
       {ix && <Timeline ix={ix} info={info} />}
       <Filters info={info} />
     </div>

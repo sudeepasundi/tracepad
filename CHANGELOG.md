@@ -2,6 +2,22 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.7.0
+
+Split view with snap layouts.
+
+- The split button in the top bar (hover or click) shows five layouts: side by side, top and bottom, three columns, one large and two stacked, and two by two. Click the place where the current file should go.
+- Empty places show your other open files as large cards to pick from, "Open a file", or "Leave this space out".
+- Drag a tab, or a file from the Open files list, over the editor: a bar with the same layouts appears at the top, and a translucent outline shows exactly where the file will land. Dropping on a pane replaces what it shows; dropping on the right half of a single editor opens the two side by side. Dragging within the tab strip still reorders.
+- Up to four files. Every layout has dividers you can drag; double-click a divider for equal sizes. Sizes are remembered, and the split comes back after a reload.
+- Ctrl+\ toggles two files side by side. F6 moves to the next pane. "Show beside" is in the tab menu.
+- Panes scroll together by time: several services' logs stay at the same moment, whichever pane you scroll. Choose "By time", "By line" or "Off" in the split menu.
+- Filters, including time ranges, and Ctrl+F apply to every pane. The log bar stays in place while any pane shows a log.
+- Each pane has its own header with a file picker, swap with the main pane, and close (the file stays open as a tab). Ctrl+S, the status bar and the sidebar follow the pane that has focus.
+- Large files, the Markdown preview and Auto tables all work inside panes.
+- On phones the panes stack.
+- Limits: a file is shown in one pane at a time; "By time" needs both panes to be logs with timestamps.
+
 ## 0.6.1
 
 - Fixed: "Copy as table" (and Copy CSV, Copy table, Copy as rich text, Copy name, and copying lines in large files) did nothing but show an error when the browser refuses clipboard permission. That happens when Tracepad is embedded in another page and on managed browsers where the permission is switched off. Copying now uses a way that needs no permission, only your click.

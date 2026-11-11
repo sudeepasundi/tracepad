@@ -5,7 +5,8 @@ import { toast } from './app/feedback';
 import { hasUnstoredChanges } from './app/session';
 import { initSettings } from './app/settings';
 import { activeId, crossOriginFramed, tabs } from './app/state';
-import { getView } from './editor/editor';
+import { docOf, getView, scrollTabToLine, topLineOf, viewOf } from './editor/editor';
+import { focusedPane, layout, paneTabs } from './app/panes';
 import { hiddenField } from './editor/log';
 import { activeResult, results } from './app/results';
 import { getBig, rowCount } from './app/big';
@@ -46,6 +47,31 @@ void startEngine();
   table: () => {
     const r = results.value.find((x) => x.id === activeResult.value);
     return r?.table ? { title: r.table.title, columns: r.table.columns.map((c) => c.name), rows: r.table.rows.length, total: r.table.total, first: r.table.rows[0] ?? null, ms: r.auto?.ms ?? null, patterns: r.auto?.templates.length ?? null } : null;
+  },
+  panes: () => ({ layout: layout.value, tabs: paneTabs.value.map((id) => tabs.value.find((t) => t.id === id)?.name ?? null), focused: focusedPane.value }),
+  /** 0-based line at the top of the pane that shows the named tab. */
+  topLine: (name: string) => {
+    const t = tabs.value.find((x) => x.name === name);
+    return t ? topLineOf(t.id) : null;
+  },
+  scrollTab: (name: string, line: number) => {
+    const t = tabs.value.find((x) => x.name === name);
+    if (t) scrollTabToLine(t.id, line);
+  },
+  textOf: (name: string) => {
+    const t = tabs.value.find((x) => x.name === name);
+    return t ? (docOf(t.id)?.toString() ?? '') : '';
+  },
+  /** Lines hidden by the filter in the named tab (which may be in any pane). */
+  hiddenIn: (name: string) => {
+    const t = tabs.value.find((x) => x.name === name);
+    const s = t ? viewOf(t.id)?.state : undefined;
+    if (!s) return -1;
+    let n = 0;
+    s.field(hiddenField).between(0, s.doc.length, (from, to) => {
+      n += s.doc.lineAt(to).number - s.doc.lineAt(from).number + 1;
+    });
+    return n;
   },
   scrollEditor: (top: number) => void (getView().scrollDOM.scrollTop = top),
   /** Check linked files for changes on disk right now (normally every second or two). */

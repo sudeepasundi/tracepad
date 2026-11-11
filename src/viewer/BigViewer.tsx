@@ -7,8 +7,8 @@ import { bigReveal, bigTick, ensureRows, getBig, lineOfRow, publishCursor, revea
 import { copyToClipboard } from '../app/clipboard';
 import { toast } from '../app/feedback';
 import { settings } from '../app/settings';
-import { activeTab, type Tab } from '../app/state';
-import { setNavigator } from '../editor/editor';
+import { activeId, tabs, type Tab } from '../app/state';
+import { clearNavigator, notifyScroll, setNavigator, type Navigator } from '../editor/editor';
 import { isOwnFrame } from '../editor/log';
 import { openFiles } from '../files/fileio';
 import { FLAG_CAUSE, FLAG_ENTRY, FLAG_FRAME } from '../engine/logparse';
@@ -53,8 +53,8 @@ function pieces(text: string, find: RegExp | null, entry: boolean): ComponentChi
   return text;
 }
 
-export function BigViewer() {
-  const tab = activeTab.value;
+export function BigViewer({ tabId }: { tabId: number }) {
+  const tab = tabs.value.find((t) => t.id === tabId);
   void bigTick.value;
   const b = tab?.big ? getBig(tab.id) : null;
   if (!tab || !b) return null;
@@ -85,11 +85,27 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
   const toScroll = (top: number) => (scaled ? (maxTop ? (top / maxTop) * (height - viewH) : 0) : top * rowH);
   const fromScroll = (px: number) => (scaled ? (height > viewH ? (px / (height - viewH)) * maxTop : 0) : px / rowH);
 
+  const maxTopRef = useRef(maxTop);
+  maxTopRef.current = maxTop;
+  const toScrollRef = useRef(toScroll);
+  toScrollRef.current = toScroll;
+
   const setTop = (top: number) => {
     b.top = Math.max(0, Math.min(maxTop, top));
     const el = scroller.current;
     if (el) {
       expected.current = Math.round(toScroll(b.top));
+      el.scrollTop = expected.current;
+    }
+    repaint();
+    notifyScroll(b.id);
+  };
+  // Scroll sync from another pane: move without reporting it back.
+  const setTopQuietly = (top: number) => {
+    b.top = Math.max(0, Math.min(maxTopRef.current, top));
+    const el = scroller.current;
+    if (el) {
+      expected.current = Math.round(toScrollRef.current(b.top));
       el.scrollTop = expected.current;
     }
     repaint();
@@ -109,21 +125,30 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
     const ro = new ResizeObserver(measure);
     ro.observe(scroller.current!);
     window.addEventListener('tp-appearance', measure);
-    setNavigator({
+    const nav: Navigator = {
       goToLine: (line) => revealLine(b.id, line - 1),
       cursorLine: () => b.cursor + 1,
       focus: () => root.current?.focus({ preventScroll: true }),
-    });
-    root.current?.focus({ preventScroll: true });
+      topLine: () => (rowCount(b) ? lineOfRow(b, Math.min(rowCount(b) - 1, Math.round(b.top))) : 0),
+      scrollToLine: (line) => setTopQuietly(rowOfLine(b, line)),
+    };
+    setNavigator(b.id, nav);
+    if (activeId.peek() === b.id) root.current?.focus({ preventScroll: true });
     publishCursor(b);
     // Restore where this tab was.
     if (scroller.current) scroller.current.scrollTop = expected.current = Math.round(toScroll(b.top));
     return () => {
       ro.disconnect();
       window.removeEventListener('tp-appearance', measure);
-      setNavigator(null);
+      clearNavigator(b.id, nav);
     };
   }, []);
+
+  // The status bar follows the pane that has focus.
+  const isActive = activeId.value === b.id;
+  useEffect(() => {
+    if (isActive) publishCursor(b);
+  }, [isActive]);
 
   // Wheel: exact rows, even when the scrollbar is scaled.
   useEffect(() => {
@@ -183,6 +208,7 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
       // The user moved the scrollbar.
       b.top = Math.max(0, Math.min(maxTop, fromScroll(el.scrollTop)));
       expected.current = el.scrollTop;
+      notifyScroll(b.id);
     }
     repaint();
   };

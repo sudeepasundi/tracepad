@@ -159,6 +159,16 @@ export const IconExpand = (p: P) => (
 );
 export const IconPreview = (p: P) => (
   <Svg {...p}>
-    <path d="M3 5h18v14H3zM12 5v14M15 9h3M15 12h3M15 15h2" />
+    <path d="M3 5h18v14H3zM6.5 9h4M6.5 12h4M6.5 15h3M14 9.5l4 2.5-4 2.5z" />
+  </Svg>
+);
+export const IconSplit = (p: P) => (
+  <Svg {...p}>
+    <path d="M3 5h18v14H3zM12 5v14" />
+  </Svg>
+);
+export const IconSwap = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 8h14l-3-3M20 16H6l3 3" />
   </Svg>
 );

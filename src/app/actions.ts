@@ -10,6 +10,8 @@ import { registerCommands, type Command } from './commands';
 import { ask, toast } from './feedback';
 import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settings';
 import { activeId, activeTab, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
+import { applyLayout, focusPane, focusedPane, isSplit, paneTabs, toggleSplit, unsplit } from './panes';
+import { SPLIT_LAYOUTS } from './layouts';
 import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
 import { countDuplicates, findInTabs, panelMaximised, panelOpen, results, runAutoTables, runExtract } from './results';
@@ -191,6 +193,30 @@ export function registerAllCommands(): void {
     },
     { id: 'panel.maximise', title: 'Maximise or restore the results panel', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), (panelMaximised.value = !panelMaximised.value))) },
     { id: 'panel.fullscreen', title: 'Results panel full screen', category: 'View', run: () => void (results.value.length && ((panelOpen.value = true), toggleFullscreen('panel'))) },
+    { id: 'view.split', title: 'Split: two files side by side, or back to one', category: 'View', keys: ['Ctrl+\\'], run: toggleSplit },
+    ...SPLIT_LAYOUTS.map((l): Command => ({ id: `view.layout.${l.id}`, title: `Split layout: ${l.name.toLowerCase()}`, category: 'View', run: () => applyLayout(l.id, 0) })),
+    { id: 'view.unsplit', title: 'Back to one editor', category: 'View', run: unsplit },
+    {
+      id: 'view.nextPane',
+      title: 'Focus the next pane',
+      category: 'View',
+      keys: ['F6'],
+      run: () => {
+        if (!isSplit.value) return;
+        const list = paneTabs.value;
+        for (let step = 1; step <= list.length; step++) {
+          const i = (focusedPane.value + step) % list.length;
+          if (list[i] != null) {
+            focusPane(i);
+            focusEditor();
+            return;
+          }
+        }
+      },
+    },
+    { id: 'view.sync.time', title: 'Panes scroll together by time', category: 'View', run: () => updateSettings({ syncScroll: 'time' }) },
+    { id: 'view.sync.line', title: 'Panes scroll together by line', category: 'View', run: () => updateSettings({ syncScroll: 'line' }) },
+    { id: 'view.sync.off', title: 'Panes scroll separately', category: 'View', run: () => updateSettings({ syncScroll: 'off' }) },
     { id: 'view.preview', title: 'Markdown preview', category: 'View', keys: ['Alt+P'], run: () => togglePreview(false) },
     { id: 'view.previewFull', title: 'Markdown preview full screen', category: 'View', keys: ['Alt+Shift+P'], run: () => togglePreview(true) },
     { id: 'view.pasteTables', title: 'Toggle converting pasted tables to Markdown', category: 'View', run: () => toggleSetting('pasteTables') },

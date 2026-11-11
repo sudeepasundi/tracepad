@@ -10,6 +10,7 @@ import { dropBig, setBigBusy, setBigMask } from './big';
 import { EMPTY_FILTER, isEmptyFilter, type ErrorGroup, type FilterSpec } from '../engine/logfilter';
 import { FLAG_ENTRY, FORMAT_NAMES, LV } from '../engine/logparse';
 import { toast } from './feedback';
+import { visibleTabs } from './panes';
 import { activeId, patchTab, tabs, type Tab } from './state';
 
 export interface LogInfo {
@@ -172,14 +173,17 @@ export function refilter(id: number): Promise<void> {
   return applyFilterTo(id);
 }
 
-let filterRun = 0;
+/** Latest filter run per tab: an older run that finishes late is dropped. */
+const filterRuns = new Map<number, number>();
 
 async function applyFilterTo(id: number): Promise<void> {
   const tab = tabs.value.find((t) => t.id === id);
   const info = logInfo.value[id];
   if (!tab || !info || info.status !== 'ready') return;
   const spec = logFilter.value;
-  const run = ++filterRun;
+  const run = (filterRuns.get(id) ?? 0) + 1;
+  filterRuns.set(id, run);
+  const latest = () => filterRuns.get(id) === run;
   if (isEmptyFilter(spec)) {
     if (masks.delete(id) || info.shown !== null || info.error) {
       if (tab.big) setBigMask(id, null);
@@ -189,10 +193,10 @@ async function applyFilterTo(id: number): Promise<void> {
     return;
   }
   if (tab.big) setBigBusy(id, 0);
-  const result = tab.big ? await filterBig(tab.uid, spec, (done, total) => run === filterRun && setBigBusy(id, total ? done / total : 1)) : await filterLog(tab.uid, spec);
+  const result = tab.big ? await filterBig(tab.uid, spec, (done, total) => latest() && setBigBusy(id, total ? done / total : 1)) : await filterLog(tab.uid, spec);
   const current = logInfo.value[id];
-  if (!result || run !== filterRun || !current || current.version !== info.version) {
-    if (tab.big && run === filterRun) setBigBusy(id, null);
+  if (!result || !latest() || !current || current.version !== info.version) {
+    if (tab.big && latest()) setBigBusy(id, null);
     return;
   }
   if (result.error) {
@@ -329,26 +333,32 @@ export function refreshLogDecorations(): void {
 
 export function initLogs(): void {
   // Analyse the tab on screen when it appears or (shortly after) it changes.
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  let lastActive: number | null = null;
+  // Every pane counts: with a split, each file on screen is analysed.
+  const timers = new Map<number, ReturnType<typeof setTimeout>>();
+  let lastShown = new Set<number>();
   effect(() => {
-    const id = activeId.value;
+    const ids = visibleTabs.value;
     void docTick.value;
-    void tabs.value.find((t) => t.id === id)?.lang;
-    if (id == null) return;
-    if (timer) clearTimeout(timer);
-    const switched = id !== lastActive;
-    lastActive = id;
-    timer = setTimeout(() => void analyse(id), switched ? 0 : 450);
+    for (const id of ids) void tabs.value.find((t) => t.id === id)?.lang;
+    for (const id of ids) {
+      const old = timers.get(id);
+      if (old) clearTimeout(old);
+      timers.set(
+        id,
+        setTimeout(() => void analyse(id), lastShown.has(id) ? 450 : 0),
+      );
+    }
+    lastShown = new Set(ids);
   });
   // Re-filter when the filter changes or another tab comes to the front.
   let filterTimer: ReturnType<typeof setTimeout> | undefined;
   effect(() => {
     void logFilter.value;
-    const id = activeId.value;
-    if (id == null) return;
+    const ids = visibleTabs.value;
+    if (!ids.length) return;
     if (filterTimer) clearTimeout(filterTimer);
-    filterTimer = setTimeout(() => void applyFilterTo(id), 140);
+    // One filter for every pane.
+    filterTimer = setTimeout(() => ids.forEach((id) => void applyFilterTo(id)), 140);
   });
   // Forget closed tabs.
   effect(() => {

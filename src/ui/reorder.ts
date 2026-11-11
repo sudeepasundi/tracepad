@@ -3,6 +3,7 @@
 // mouse, pen and touch, and never starts on a plain click.
 import { moveTab } from '../app/tabs';
 import { tabs } from '../app/state';
+import { dropOnTarget, overEditorArea, snapDrag, snapTargetAt } from './Panes';
 
 interface Options {
   event: PointerEvent;
@@ -69,10 +70,21 @@ export function startReorder({ event, id, axis, container, itemSelector }: Optio
       scrollTimer = window.setInterval(step, 30);
     }
     e.preventDefault();
+    // Over the editor the drag snaps the file into a pane instead of reordering.
+    if (overEditorArea(e.clientX, e.clientY)) {
+      snapDrag.value = { tabId: id, target: snapTargetAt(e.clientX, e.clientY) };
+      return;
+    }
+    if (snapDrag.value) snapDrag.value = null;
     place();
   };
 
-  const end = () => {
+  const end = (e: PointerEvent) => {
+    if (snapDrag.value) {
+      const target = e.type === 'pointerup' && overEditorArea(e.clientX, e.clientY) ? snapTargetAt(e.clientX, e.clientY) : null;
+      snapDrag.value = null;
+      dropOnTarget(id, target);
+    }
     window.removeEventListener('pointermove', move);
     window.removeEventListener('pointerup', end);
     window.removeEventListener('pointercancel', end);

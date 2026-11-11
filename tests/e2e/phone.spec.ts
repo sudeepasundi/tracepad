@@ -224,3 +224,53 @@ test('the Markdown preview covers the editor and fits the screen, also in full s
   await expect(pv).toHaveCount(0);
   await expect(page.locator('.cm-content')).toBeVisible();
 });
+
+test('split view on a phone: the panes stack, each with its header, and nothing scrolls sideways', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined }));
+  await page.reload();
+  await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Open a file', exact: true }).tap();
+  await (await chooser).setFiles(['one.txt', 'two.txt', 'three.txt'].map((name) => ({ name, mimeType: 'text/plain', buffer: Buffer.from(`${name} line\n`.repeat(40)) })));
+  await expect(page.getByRole('tab', { name: 'three.txt' })).toBeVisible();
+  await page.getByRole('button', { name: 'Split layouts' }).tap();
+  const pop = await box(page.getByRole('dialog', { name: 'Split layouts' }));
+  expect(pop.x).toBeGreaterThanOrEqual(0);
+  expect(pop.x + pop.width).toBeLessThanOrEqual(W);
+  for (const t of await page.locator('.tp-split-pop .tp-thumb').all()) {
+    const b = await box(t);
+    expect(b.x).toBeGreaterThanOrEqual(pop.x);
+    expect(b.x + b.width).toBeLessThanOrEqual(pop.x + pop.width);
+  }
+  await page.getByRole('button', { name: 'Three columns, place 1 of 3' }).tap();
+  // Snap Assist in a short pane: its title is reachable (the list scrolls), not cut off above the pane.
+  const assistBox = await box(page.locator('.tp-assist').first());
+  const title = await box(page.locator('.tp-assist-title').first());
+  expect(title.y).toBeGreaterThanOrEqual(assistBox.y);
+  await page.locator('.tp-assist').first().locator('.tp-assist-card').first().tap();
+  await page.locator('.tp-assist').first().locator('.tp-assist-card').first().tap();
+  const area = await box(page.locator('.tp-editor-area'));
+  const boxes = await Promise.all((await page.locator('.tp-pane').all()).map(box));
+  expect(boxes).toHaveLength(3);
+  for (const [i, b] of boxes.entries()) {
+    // Stacked: full width, one under the other, about a third each.
+    expect(b.x).toBeCloseTo(area.x, 0);
+    expect(b.width).toBeCloseTo(area.width, 0);
+    expect(b.height).toBeGreaterThan(area.height / 3 - 4);
+    if (i) expect(b.y).toBeCloseTo(boxes[i - 1].y + boxes[i - 1].height, 0);
+  }
+  expect(boxes[2].y + boxes[2].height).toBeCloseTo(area.y + area.height, 0);
+  await expect(page.getByRole('separator', { name: 'Resize panes' })).toHaveCount(0);
+  for (const h of await page.locator('.tp-pane-head').all()) {
+    for (const b of await h.locator('button').all()) {
+      const bb = await box(b);
+      expect(bb.x).toBeGreaterThanOrEqual(area.x);
+      expect(bb.x + bb.width).toBeLessThanOrEqual(area.x + area.width);
+    }
+  }
+  await fits(page);
+  await page.getByRole('button', { name: 'Remove pane 3' }).tap();
+  await page.getByRole('button', { name: 'Remove pane 2' }).tap();
+  await expect(page.locator('.tp-pane')).toHaveCount(1);
+  expect((await box(page.locator('.tp-pane'))).height).toBeCloseTo(area.height, 0);
+});

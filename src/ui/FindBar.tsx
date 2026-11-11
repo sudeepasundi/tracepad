@@ -4,10 +4,11 @@ import { SearchQuery, closeSearchPanel, findNext, findPrevious, openSearchPanel,
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef } from 'preact/hooks';
 import { registerLayer } from '../app/commands';
-import { bigFindStep } from '../app/big';
-import { activeId, activeTab, findOpen } from '../app/state';
+import { bigFindStep, bigSearch, clearBigSearch } from '../app/big';
+import { visibleTabs } from '../app/panes';
+import { activeId, activeTab, findOpen, tabs } from '../app/state';
 import { BigFind } from '../viewer/BigFind';
-import { docTick, focusEditor, getView } from '../editor/editor';
+import { docTick, focusEditor, getView, paneViews } from '../editor/editor';
 import { IconChevron, IconClose, IconDown, IconSelectAll, IconUp } from './icons';
 
 export const query = signal('');
@@ -25,10 +26,13 @@ function makeQuery(): SearchQuery {
   return new SearchQuery({ search: query.value, replace: replacement.value, caseSensitive: caseSensitive.value, wholeWord: wholeWord.value, regexp: regexp.value });
 }
 
+/** Sends the query to every pane, so matches are marked in all of them. */
 function push(): void {
-  const v = getView();
-  v.dispatch({ effects: setSearchQuery.of(makeQuery()) });
-  if (!searchPanelOpen(v.state)) openSearchPanel(v);
+  const q = makeQuery();
+  for (const v of paneViews()) {
+    v.dispatch({ effects: setSearchQuery.of(q) });
+    if (!searchPanelOpen(v.state)) openSearchPanel(v);
+  }
 }
 
 function recount(): void {
@@ -74,8 +78,7 @@ export function openFind(mode: 'find' | 'replace'): void {
 
 export function closeFind(): void {
   findOpen.value = null;
-  const v = getView();
-  closeSearchPanel(v);
+  for (const v of paneViews()) closeSearchPanel(v);
   focusEditor();
 }
 
@@ -108,7 +111,29 @@ function Toggle({ on, label, text, flip }: { on: boolean; label: string; text: s
 /** The editor's find/replace box, or the large-file one when that kind of tab is on screen. */
 export function FindBar() {
   if (!findOpen.value) return null;
-  return activeTab.value?.big ? <BigFind /> : <EditorFind />;
+  return (
+    <>
+      <OtherPanes />
+      {activeTab.value?.big ? <BigFind /> : <EditorFind />}
+    </>
+  );
+}
+
+/** Keeps the panes that do not have focus searching for the same thing. */
+function OtherPanes() {
+  const others = visibleTabs.value.filter((id) => id !== activeId.value);
+  const big = others.filter((id) => tabs.value.find((t) => t.id === id)?.big);
+  const deps = [query.value, caseSensitive.value, wholeWord.value, regexp.value, visibleTabs.value.join(',')];
+  useEffect(() => {
+    push();
+  }, deps);
+  useEffect(() => {
+    if (!big.length) return;
+    const t = setTimeout(() => big.forEach((id) => bigSearch(id, query.value, { regex: regexp.value, caseSensitive: caseSensitive.value, wholeWord: wholeWord.value })), 280);
+    return () => clearTimeout(t);
+  }, deps);
+  useEffect(() => () => big.forEach((id) => clearBigSearch(id)), [big.join(',')]);
+  return null;
 }
 
 function EditorFind() {

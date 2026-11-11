@@ -8,8 +8,8 @@ import { copyToClipboard } from '../app/clipboard';
 import { toast } from '../app/feedback';
 import { PREVIEW_LIMIT, renderMarkdown } from '../app/markdown';
 import { settings, updateSettings } from '../app/settings';
-import { activeTab, patchTab } from '../app/state';
-import { docOf, docTick, focusEditor, getView } from '../editor/editor';
+import { patchTab, tabs } from '../app/state';
+import { docOf, docTick, focusEditor, getView, onPaneScroll, viewOf } from '../editor/editor';
 import { parseMarkdownTable } from '../engine/tabletext';
 import { fullscreen, toggleFullscreen } from './fullscreen';
 import { IconClose, IconExpand } from './icons';
@@ -156,8 +156,8 @@ function tableAction(button: HTMLElement, tabId: number): void {
   tableEdit.value = { tabId, from, to: from + lines.length, rows: parsed.rows };
 }
 
-export function Preview() {
-  const tab = activeTab.value;
+export function Preview({ tabId }: { tabId: number }) {
+  const tab = tabs.value.find((t) => t.id === tabId);
   if (!tab || !tab.preview || tab.big) return null;
   return <PreviewPane key={tab.id} tabId={tab.id} name={tab.name} />;
 }
@@ -211,7 +211,7 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
     const sc = scroller.current;
     if (!sc) return;
     if (lock.current.who === 'preview' && performance.now() < lock.current.until) return;
-    const view = getView();
+    const view = viewOf(tabId) ?? getView();
     const ed = view.scrollDOM;
     const max = ed.scrollHeight - ed.clientHeight;
     let target: number;
@@ -245,16 +245,14 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
   }, [tabId, tick]);
 
   useLayoutEffect(() => {
-    const ed = getView().scrollDOM;
-    const onEditor = () => followEditor();
-    ed.addEventListener('scroll', onEditor, { passive: true });
+    const stop = onPaneScroll((id) => id === tabId && followEditor());
     const ro = new ResizeObserver(() => {
       measure();
     });
     if (scroller.current) ro.observe(scroller.current);
     if (body.current) ro.observe(body.current);
     return () => {
-      ed.removeEventListener('scroll', onEditor);
+      stop();
       ro.disconnect();
     };
   }, [tabId]);
@@ -263,7 +261,7 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
     const sc = scroller.current!;
     if (lock.current.who === 'editor' && performance.now() < lock.current.until) return;
     if (full) return;
-    const view = getView();
+    const view = viewOf(tabId) ?? getView();
     const ed = view.scrollDOM;
     lock.current = { who: 'preview', until: performance.now() + 120 };
     const max = sc.scrollHeight - sc.clientHeight;
@@ -291,7 +289,7 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
   const startResize = (e: PointerEvent) => {
     if (full) return;
     const handle = e.currentTarget as HTMLElement;
-    const area = handle.closest('.tp-editor-area') as HTMLElement;
+    const area = handle.closest('.tp-pane-body') as HTMLElement;
     const rect = area.getBoundingClientRect();
     handle.setPointerCapture(e.pointerId);
     handle.classList.add('is-dragging');
