@@ -338,8 +338,7 @@ test.describe('preview', () => {
     expect(await share()).toBeCloseTo(0.6, 1);
     await page.reload();
     await expect(page.locator('html[data-ready="true"]')).toBeAttached();
-    await editor(page).click();
-    await page.keyboard.press('Alt+P');
+    // The preview comes back by itself, at the remembered width.
     await expect(preview(page)).toBeVisible();
     expect(await share()).toBeCloseTo(0.6, 1);
     await handle.dblclick();
@@ -530,4 +529,13 @@ test.describe('table editor with a large table', () => {
       expect(await docText(page)).toContain('\n\nafter\n');
     });
   }
+});
+
+test('an open preview comes back after a reload', async ({ page }) => {
+  await openPreview(page);
+  await page.waitForTimeout(700);
+  await page.reload();
+  await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+  await expect(page.locator('.tp-preview')).toBeVisible();
+  await expect(page.locator('.tp-md h1')).toHaveText('Incident notes');
 });

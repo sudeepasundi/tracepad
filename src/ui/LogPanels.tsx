@@ -198,9 +198,7 @@ export function HighlightsPanel() {
               value={r.pattern}
               onInput={(e) => patch(r.id, { pattern: (e.target as HTMLInputElement).value })}
             />
-            <button type="button" class="tp-find-toggle" aria-pressed={r.regex} aria-label="Regular expression" title="Regular expression" onClick={() => patch(r.id, { regex: !r.regex })}>
-              .*
-            </button>
+            <button type="button" class="tp-find-toggle" aria-pressed={r.regex} aria-label="Regular expression" title="Regular expression" onClick={() => patch(r.id, { regex: !r.regex })} data-glyph=".*" />
             <button type="button" class="tp-btn-icon tp-file-btn" aria-label={`Delete rule ${r.pattern || 'empty'}`} title="Delete rule" onClick={() => save(rules.filter((x) => x.id !== r.id))}>
               <IconClose size={13} />
             </button>

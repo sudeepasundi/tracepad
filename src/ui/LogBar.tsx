@@ -237,12 +237,8 @@ function Filters({ info }: { info: LogInfo }) {
             value={f.text}
             onInput={(e) => patchFilter({ text: (e.target as HTMLInputElement).value })}
           />
-          <button type="button" class="tp-find-toggle" aria-pressed={f.caseSensitive} aria-label="Case-sensitive filter" title="Case-sensitive" onClick={() => patchFilter({ caseSensitive: !f.caseSensitive })}>
-            Aa
-          </button>
-          <button type="button" class="tp-find-toggle" aria-pressed={f.regex} aria-label="Use regex in filter" title="Regular expression" onClick={() => patchFilter({ regex: !f.regex })}>
-            .*
-          </button>
+          <button type="button" class="tp-find-toggle" aria-pressed={f.caseSensitive} aria-label="Case-sensitive filter" title="Case-sensitive" onClick={() => patchFilter({ caseSensitive: !f.caseSensitive })} data-glyph="Aa" />
+          <button type="button" class="tp-find-toggle" aria-pressed={f.regex} aria-label="Use regex in filter" title="Regular expression" onClick={() => patchFilter({ regex: !f.regex })} data-glyph=".*" />
         </div>
         <button type="button" class={`tp-btn tp-btn-small tp-lf-more${more ? ' is-open' : ''}`} aria-expanded={more} onClick={() => setMore(!more)}>
           <IconChevron size={12} />

@@ -41,9 +41,7 @@ export function BigFind() {
             : `${at ? `${at.toLocaleString()} of ` : ''}${f.total.toLocaleString()} line${f.total === 1 ? '' : 's'}${f.total > f.lines.length ? ' (first 50,000 reachable)' : ''}`;
   const bad = !!f && (!!f.error || (f.progress === null && f.total === 0));
   const toggle = (on: boolean, label: string, text: string, flip: () => void) => (
-    <button type="button" class="tp-find-toggle" aria-pressed={on} aria-label={label} title={label} onClick={flip}>
-      {text}
-    </button>
+    <button type="button" class="tp-find-toggle" aria-pressed={on} aria-label={label} title={label} data-glyph={text} onClick={flip} />
   );
 
   return (

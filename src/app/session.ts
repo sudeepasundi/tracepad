@@ -19,7 +19,7 @@ import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab } from '../files/fileio';
 import { toast } from './feedback';
 import { idbGet, idbSet } from './idb';
-import { activeId, tabs } from './state';
+import { activeId, patchTab, tabs } from './state';
 import { loadJSON, saveJSON } from './storage';
 import { activateTab, addTab } from './tabs';
 
@@ -43,6 +43,8 @@ interface StoredTab {
   dirty: boolean;
   lastUsed: number;
   big?: boolean;
+  /** The Markdown preview was open beside this tab. */
+  preview?: boolean;
 }
 
 interface StoredSession {
@@ -80,6 +82,7 @@ function snapshot(forJournal: boolean): StoredSession {
   const out: StoredTab[] = [];
   for (const t of list) {
     const base: StoredTab = { uid: t.uid, name: t.name, untitled: t.untitled, encoding: t.encoding, eol: t.eol, lastUsed: t.lastUsed, dirty: false };
+    if (t.preview) base.preview = true;
     if (forJournal) base.linked = !!t.handle;
     else base.handle = t.handle;
     if (t.big) {
@@ -140,6 +143,12 @@ function schedule(): void {
 }
 
 async function restoreOne(s: StoredTab): Promise<number | null> {
+  const id = await restoreTab(s);
+  if (id != null && s.preview) patchTab(id, { preview: true });
+  return id;
+}
+
+async function restoreTab(s: StoredTab): Promise<number | null> {
   const meta = { uid: s.uid, name: s.name, untitled: s.untitled, encoding: s.encoding, eol: s.eol, handle: s.handle, activate: false, lastUsed: s.lastUsed };
   if (typeof s.text === 'string') return addTab({ ...meta, text: s.text, restoredDirty: s.dirty });
   if (!s.handle) return null;

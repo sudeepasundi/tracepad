@@ -1,6 +1,6 @@
 {
   "name": "tracepad",
-  "version": "0.8.0",
+  "version": "1.0.0",
   "private": true,
   "description": "A browser text editor for backend developers: logs, tables and big files, fully offline.",
   "license": "MIT",
@@ -42,6 +42,7 @@
     "preact": "^11.2.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.0",
     "@preact/preset-vite": "^2.10.6",
     "@types/markdown-it": "^14.2.0",

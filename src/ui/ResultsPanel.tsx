@@ -40,7 +40,7 @@ function PatternList({ r }: { r: ResultTab }) {
       </div>
       <ul class="tp-pats-list" role="listbox" aria-label="Patterns">
         {auto.accessEntries > 0 && !q && (
-          <li>
+          <li role="presentation">
             <button type="button" role="option" aria-selected={auto.selected === 'access'} class={`tp-pat${auto.selected === 'access' ? ' is-active' : ''}`} onClick={() => void selectTemplate(r.id, 'access')}>
               <span class="tp-pat-count">{auto.accessEntries.toLocaleString()}</span>
               <span class="tp-pat-text">Requests (method, route, status, bytes)</span>
@@ -48,7 +48,7 @@ function PatternList({ r }: { r: ResultTab }) {
           </li>
         )}
         {list.map((t) => (
-          <li key={t.id}>
+          <li key={t.id} role="presentation">
             <button type="button" role="option" aria-selected={auto.selected === t.id} class={`tp-pat${auto.selected === t.id ? ' is-active' : ''}`} title={`First seen on line ${t.firstLine.toLocaleString()}`} onClick={() => void selectTemplate(r.id, t.id)}>
               <span class={`tp-pat-count tp-pat-count-${t.level}`}>{t.count.toLocaleString()}</span>
               <TemplateText t={t} />
@@ -172,20 +172,26 @@ export function ResultsPanel() {
       <header class="tp-panel-head" onDblClick={(e) => (e.target as HTMLElement).closest('button') === null && toggleFullscreen('panel')}>
         <div class="tp-panel-tabs" role="tablist" aria-label="Results">
           {list.map((r) => (
-            <div key={r.id} role="tab" tabIndex={r.id === active.id ? 0 : -1} aria-selected={r.id === active.id} class={`tp-ptab${r.id === active.id ? ' is-active' : ''}`} title={r.title} onClick={() => (activeResult.value = r.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (activeResult.value = r.id)}>
+            <div key={r.id} role="tab" tabIndex={r.id === active.id ? 0 : -1} aria-selected={r.id === active.id} class={`tp-ptab${r.id === active.id ? ' is-active' : ''}`} title={`${r.title} (Delete closes it)`}
+              onClick={() => (activeResult.value = r.id)}
+              onKeyDown={(e) => {
+                // The close mark is for the mouse; from the keyboard, Delete closes the result.
+                if (e.key === 'Enter' || e.key === ' ') activeResult.value = r.id;
+                else if (e.key === 'Delete') closeResult(r.id);
+              }}
+            >
               <span class="tp-ptab-name">{r.title}</span>
-              <button
-                type="button"
+              <span
                 class="tp-tab-close tp-ptab-close"
-                aria-label={`Close result ${r.title}`}
-                tabIndex={-1}
+                aria-hidden="true"
+                title="Close this result"
                 onClick={(e) => {
                   e.stopPropagation();
                   closeResult(r.id);
                 }}
               >
                 <IconClose size={12} />
-              </button>
+              </span>
             </div>
           ))}
         </div>

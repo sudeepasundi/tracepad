@@ -81,20 +81,20 @@ export function TopBar() {
               }}
             >
               {editing ? <RenameInput id={t.id} name={t.name} /> : <span class="tp-tab-name">{t.name}</span>}
-              <button
-                type="button"
+              {/* Not a button: a control inside a tab cannot be reached by assistive technology.
+                  Closing is also on Alt+W and in the tab's menu (Shift+F10). */}
+              <span
                 class="tp-tab-close"
-                aria-label={t.dirty ? `Close ${t.name} (unsaved changes)` : `Close ${t.name}`}
+                aria-hidden="true"
                 title={`Close (${isMac ? '⌥W' : 'Alt+W'})`}
-                tabIndex={-1}
                 onClick={(e) => {
                   e.stopPropagation();
                   void closeTab(t.id);
                 }}
               >
-                <span class="tp-tab-dot" aria-hidden="true" />
+                <span class="tp-tab-dot" />
                 <IconClose size={13} />
-              </button>
+              </span>
             </div>
           );
         })}
@@ -118,7 +118,7 @@ export function TopBar() {
         <button type="button" class="tp-cmd-pill" aria-label="Search commands" title="Command palette (Ctrl+Shift+P)" onClick={() => runCommand('view.palette')}>
           <IconSearch size={15} />
           <span class="tp-cmd-pill-text">Search commands</span>
-          <kbd class="tp-kbd">{isMac ? '⌘⇧P' : 'Ctrl+Shift+P'}</kbd>
+          <kbd class="tp-kbd" aria-hidden="true" data-keys={isMac ? '⌘⇧P' : 'Ctrl+Shift+P'} />
         </button>
       </div>
     </header>

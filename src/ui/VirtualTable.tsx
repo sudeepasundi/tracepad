@@ -56,7 +56,7 @@ export function VirtualTable({ table, selected, onRow }: { table: Table; selecte
   }
 
   return (
-    <div class="tp-vt" ref={scroller} role="table" aria-label={table.title} aria-rowcount={table.rows.length + 1} onScroll={(e) => setTop((e.currentTarget as HTMLElement).scrollTop)}>
+    <div class="tp-vt" ref={scroller} tabIndex={0} role="table" aria-label={table.title} aria-rowcount={table.rows.length + 1} onScroll={(e) => setTop((e.currentTarget as HTMLElement).scrollTop)}>
       <div class="tp-vt-inner" style={{ height: `${head + table.rows.length * ROW}px`, width: `calc(${cols.reduce((a, b) => a + b, 0)}ch + 16px)` }}>
         <div class="tp-vt-head" role="row" style={{ gridTemplateColumns: template, height: `${head}px` }}>
           {table.columns.map((c, i) => (

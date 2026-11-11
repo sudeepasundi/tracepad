@@ -4,9 +4,10 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 **Live app:** https://sudeepasundi.github.io/tracepad/
 
-Tracepad is being built in milestones. This page lists what works today and what is planned; the [changelog](CHANGELOG.md) has the detail for each release.
+Version 1.0. The [changelog](CHANGELOG.md) says what each release added.
 
-## What works today (0.8)
+## What it does
+
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
 - **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
@@ -27,11 +28,32 @@ Tracepad is being built in milestones. This page lists what works today and what
 - **Single-file build**: one self-contained `tracepad.html` that also works inside a sandboxed cross-origin iframe.
 - **A sample Spring Boot log** with stack traces, Kafka, Feign and trace IDs to try things on.
 
-## Planned
+## Shortcuts
 
-| Version | Adds |
+Every action is in the command palette (`Ctrl+Shift+P` or `F1`) with its shortcut; Help in the side rail lists them too.
+
+| | |
 |---|---|
-| 1.0 | Polish: accessibility and phone pass, performance, documentation |
+| Open, Save, Save As | `Ctrl+O`, `Ctrl+S`, `Ctrl+Shift+S` |
+| New tab, close tab, next and previous tab | `Alt+N`, `Alt+W`, `Alt+.`, `Alt+,` |
+| Find, replace, next and previous match | `Ctrl+F`, `Ctrl+H`, `F3`, `Shift+F3` |
+| Go to line | `Ctrl+G` |
+| Next and previous error in a log | `F8`, `Shift+F8` |
+| Auto tables, results panel | `Alt+T`, `Alt+J` |
+| Markdown preview, preview full screen | `Alt+P`, `Alt+Shift+P` |
+| Split two files, next pane | `Ctrl+\`, `F6` |
+| Compare with…, next and previous change | `Alt+C`, `F7`, `Shift+F7` |
+| Open files list, find in all tabs | `Ctrl+Shift+E`, `Ctrl+Shift+F` |
+| Word wrap, font size | `Alt+Z`, `Alt+=`, `Alt+-`, `Alt+0` |
+
+## Limits
+
+- Files over 64 MB are read-only, are shown from disk, and cannot be compared. Only UTF-8 and Latin-1 are supported there.
+- A file is shown in one pane at a time. Scrolling panes together by time needs logs with timestamps in each pane.
+- The compare view is read-only and shows the files as they were when it opened (Refresh takes them again).
+- In Firefox and Safari a file cannot be saved in place: Save downloads a copy.
+- Inside another page (an embedded frame), the browser may block downloads; Save then offers to copy the text instead. Real full screen is not available there, so full-screen views fill the frame.
+- The Markdown preview shows the first 1.5 million characters of very long documents.
 
 ### How large is large?
 
@@ -67,7 +89,7 @@ npm test               # unit tests (Vitest): themes/contrast, encodings, log fo
 npm run test:rust      # Rust unit tests
 npm run build:all      # the end-to-end tests run against the built output
 npx playwright install chromium firefox webkit
-npm run e2e            # Chromium: PWA build, single-file build (incl. cross-origin iframe), phone
+npm run e2e            # Chromium: PWA build, single-file build (incl. cross-origin iframe), phone, accessibility audit
 npm run e2e:browsers   # Firefox and WebKit smoke tests
 npm run shots          # screenshots at 1920x1080, 1366x768 and 390x844 into shots/
 ```

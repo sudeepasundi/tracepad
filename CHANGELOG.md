@@ -2,6 +2,18 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 1.0.0
+
+Polish. Everything from the earlier versions, checked over.
+
+- Accessibility: every main screen is now checked by an automated audit (WCAG 2.1 A and AA) in a dark and a light theme, and what it found is fixed. Line numbers are easier to read. Read-only views (large files' placeholders, empty panes, the compare view) can be reached and scrolled from the keyboard. The sidebar and result tables can be scrolled from the keyboard. Names of controls match what they show.
+- From the keyboard, Delete on a result's tab closes it; tabs close with Alt+W or from their menu (Shift+F10).
+- Faster start: the Markdown renderer and the compare view are loaded the first time you use them (they still work offline). The first load is about 13% smaller.
+- An open Markdown preview now comes back after a reload.
+- Phones: the list of patterns in Auto tables has more room.
+- More of the app is tested in Firefox and Safari: logs and filters, Auto tables, split view with time sync, compare, the Markdown preview and pasted tables.
+- Limits that remain: large files (over 64 MB) are read-only and cannot be compared; a file is shown in one pane at a time; in Firefox and Safari files cannot be saved in place (they are downloaded instead); inside another page, downloads may be blocked, and Save then offers to copy the text.
+
 ## 0.8.0
 
 Compare.

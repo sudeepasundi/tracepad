@@ -84,3 +84,28 @@ test('the cache name carries the version so releases never mix', async ({ reques
   expect(sw).toContain('skip-waiting');
   expect(sw).not.toContain('__FILES__');
 });
+
+test('the Markdown renderer and the compare view load on first use, and are still there offline', async ({ page, context }) => {
+  const scripts: string[] = [];
+  page.on('request', (r) => r.resourceType() === 'script' && scripts.push(r.url().split('/').pop()!));
+  await page.goto('');
+  await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+  // Not part of the first load.
+  expect(scripts.some((s) => /^(markdown|Compare)-/.test(s))).toBe(false);
+  expect(scripts.filter((s) => s.endsWith('.js'))).toHaveLength(1);
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).length)).toBeGreaterThan(0);
+  // Offline: both pieces come from the cache the first time they are needed.
+  await context.setOffline(true);
+  await page.locator('.cm-content').focus();
+  await page.keyboard.type('# Title');
+  await page.keyboard.press('Alt+P');
+  await expect(page.locator('.tp-md h1')).toHaveText('Title');
+  await page.keyboard.press('Alt+P');
+  await page.getByRole('button', { name: 'New tab' }).click();
+  await page.locator('.cm-content').focus();
+  await page.keyboard.type('other');
+  await page.keyboard.press('Alt+C');
+  await expect(page.locator('.tp-compare .cm-mergeViewEditor')).toHaveCount(2);
+  await context.setOffline(false);
+});

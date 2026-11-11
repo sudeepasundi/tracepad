@@ -174,7 +174,7 @@ test.describe('Open files list', () => {
     await page.keyboard.press('Control+Shift+E');
     const filter = page.getByRole('textbox', { name: 'Filter open files' });
     await expect(filter).toBeFocused();
-    await expect(page.locator('.tp-rail-badge')).toHaveText('3');
+    await expect(page.locator('.tp-rail-badge')).toHaveAttribute('data-count', '3');
     await expect(page.locator('.tp-files-count')).toContainText('3 files');
     await page.keyboard.type('alp');
     await expect(page.locator('.tp-file')).toHaveCount(1);
@@ -256,7 +256,7 @@ test.describe('Open files list', () => {
     await page.getByRole('button', { name: 'Close beta.json', exact: true }).last().click();
     await page.getByRole('dialog').getByRole('button', { name: "Don't save" }).click();
     expect(await names(page)).toEqual(['zeta.log', 'alpha.md']);
-    await expect(page.locator('.tp-rail-badge')).toHaveText('2');
+    await expect(page.locator('.tp-rail-badge')).toHaveAttribute('data-count', '2');
   });
 
   test('appearance: tools, rows and their buttons stay inside the sidebar and do not overlap', async ({ page }) => {

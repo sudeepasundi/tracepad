@@ -6,7 +6,10 @@ import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { copyToClipboard } from '../app/clipboard';
 import { toast } from '../app/feedback';
-import { PREVIEW_LIMIT, renderMarkdown } from '../app/markdown';
+
+/** The Markdown renderer (markdown-it and the sanitiser) is loaded the first time a preview opens. */
+let renderer: Promise<typeof import('../app/markdown')> | null = null;
+const loadRenderer = () => (renderer ??= import('../app/markdown'));
 import { settings, updateSettings } from '../app/settings';
 import { patchTab, tabs } from '../app/state';
 import { docOf, docTick, focusEditor, getView, onPaneScroll, viewOf } from '../editor/editor';
@@ -228,20 +231,25 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
 
   // Render (shortly after typing stops), then line up with the editor.
   useEffect(() => {
+    let stale = false;
     const t = setTimeout(
-      () => {
-        const doc = docOf(tabId);
-        const el = body.current;
-        if (!doc || !el) return;
-        el.innerHTML = renderMarkdown(doc.toString());
-        decorate(el);
-        setTruncated(doc.length > PREVIEW_LIMIT);
-        measure();
-        followEditor();
-      },
+      () =>
+        void loadRenderer().then((md) => {
+          const doc = docOf(tabId);
+          const el = body.current;
+          if (stale || !doc || !el) return;
+          el.innerHTML = md.renderMarkdown(doc.toString());
+          decorate(el);
+          setTruncated(doc.length > md.PREVIEW_LIMIT);
+          measure();
+          followEditor();
+        }),
       body.current?.childElementCount ? 110 : 0,
     );
-    return () => clearTimeout(t);
+    return () => {
+      stale = true;
+      clearTimeout(t);
+    };
   }, [tabId, tick]);
 
   useLayoutEffect(() => {
@@ -343,7 +351,7 @@ function PreviewPane({ tabId, name }: { tabId: number; name: string }) {
       </header>
       <div class="tp-preview-scroll" ref={scroller} onScroll={onPreviewScroll} tabIndex={0}>
         <article class="tp-md" ref={body} onClick={onClick} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.target as HTMLElement).matches('thead th') && (e.preventDefault(), sortBy(e.target as HTMLElement))} />
-        {truncated && <p class="tp-preview-note">This file is very long. The preview shows its first {(PREVIEW_LIMIT / 1_000_000).toFixed(1)} million characters.</p>}
+        {truncated && <p class="tp-preview-note">This file is very long. The preview shows its first 1.5 million characters.</p>}
       </div>
     </section>
   );

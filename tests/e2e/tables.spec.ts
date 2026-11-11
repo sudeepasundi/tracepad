@@ -135,7 +135,9 @@ test.describe('auto tables on the sample log', () => {
     expect([...counts].sort((a, b) => b - a)).toEqual(counts);
     await page.getByRole('tab', { name: /^Tables · sample/ }).click();
     await expect(pattern(page, 'moved from').first()).toHaveAttribute('aria-selected', 'true');
-    await page.getByRole('button', { name: 'Close result Count by to' }).click();
+    // From the keyboard: Delete on the result's tab closes it.
+    await page.getByRole('tab', { name: 'Count by to' }).focus();
+    await page.keyboard.press('Delete');
     await expect(page.getByRole('tab', { name: 'Count by to' })).toHaveCount(0);
   });
 

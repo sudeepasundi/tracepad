@@ -187,7 +187,7 @@ test('many tabs scroll sideways instead of being squeezed', async ({ page }) => 
   await expect(page.locator('.tp-tab.is-active')).toBeInViewport();
   await expect(page.getByRole('button', { name: 'Search commands', exact: true })).toBeInViewport();
   // The rail badge counts open files.
-  await expect(page.locator('.tp-rail-badge')).toHaveText('25');
+  await expect(page.locator('.tp-rail-badge')).toHaveAttribute('data-count', '25');
 });
 
 test('the engine is running as Rust/WebAssembly', async ({ page }) => {

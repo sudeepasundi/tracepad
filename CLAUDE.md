@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 8 (0.1.0 to 0.8.0) are shipped; next is 1.0 (polish: accessibility and phone pass, performance pass, full test matrix, docs).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. All nine milestones are shipped; 1.0.0 is the current version. Later changes are fixes and requests, each shipped as its own version.
 
 ## Stack
 
@@ -121,4 +121,6 @@ Release checklist (every change ships as a version):
 - **Tests on an empty tab**: the welcome card covers the editor, so focus `.cm-content` instead of clicking it.
 - **Full screen** (0.6+): request it on the document root so toasts, menus and dialogs stay visible; handle Esc through the layer registry.
 - **Compare** (`src/app/compare.ts`, `src/ui/Compare.tsx`): a `MergeView` from @codemirror/merge over read-only copies of the two documents (`readOnlyExtensions` in editor.ts). No `revertControls`, which is what would put a strip between the sides. It covers `.tp-main`; its Escape layer has priority 0.5, below full screen (1), so Escape leaves full screen first.
+- **Accessibility audit** (`tests/e2e/a11y.spec.ts`, axe, WCAG 2.1 A/AA, dark and light): add a `check(page, 'name')` for every new screen. What it has taught: a control inside a `role="tab"` is flagged, so the tab and result-tab close marks are `aria-hidden` spans (keyboard: Alt+W, Delete on a result tab, the tab menu); text that is not part of a control's name (shortcut hints, the file-count badge, the "Aa" and ".*" glyphs) is drawn by CSS from a data attribute; every scroller needs focusable content, so read-only text gets `tabindex="0"`; line numbers use the muted colour, not the faint one.
+- **Lazy pieces**: `src/app/markdown.ts` (markdown-it, DOMPurify) and `src/ui/Compare.tsx` (@codemirror/merge) are dynamic imports, loaded on first use; the service worker precaches their chunks and the single-file build inlines them. Keep anything they need at start-up out of those files (the compare picker lives in `ComparePicker.tsx` for that reason).
 - **No Copilot integration**: it was built for 0.8 and removed before release at the owner's request (no button, no prompt hand-off, no secret masking code). Do not add it back unless asked.

@@ -34,9 +34,7 @@ export function Rail() {
     >
       {p.icon()}
       {p.id === 'files' && count > 1 && (
-        <span class="tp-rail-badge" aria-label={`${count} open files`}>
-          {count > 99 ? '99+' : count}
-        </span>
+        <span class="tp-rail-badge" aria-hidden="true" data-count={count > 99 ? '99+' : count} />
       )}
     </button>
   );
@@ -83,7 +81,7 @@ export function Sidebar() {
           <IconClose size={15} />
         </button>
       </div>
-      <div class="tp-sidebar-body">
+      <div class="tp-sidebar-body" tabIndex={0} role="region" aria-label={TITLES[panel]}>
         {panel === 'files' && <FilesPanel />}
         {panel === 'insights' && <InsightsPanel />}
         {panel === 'tables' && <ExtractPanel />}

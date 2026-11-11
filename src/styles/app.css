@@ -247,6 +247,7 @@ dd {
 
 .tp-tab-close {
   flex: none;
+  cursor: pointer;
   width: 20px;
   height: 20px;
   display: grid;
@@ -3808,6 +3809,19 @@ button.tp-thumb-zone:focus-visible,
   flex: none;
 }
 
+/* 1.0: text drawn by CSS, so a control's visible text matches its accessible name. */
+.tp-kbd[data-keys]::after {
+  content: attr(data-keys);
+}
+
+.tp-rail-badge[data-count]::after {
+  content: attr(data-count);
+}
+
+.tp-find-toggle[data-glyph]::after {
+  content: attr(data-glyph);
+}
+
 /* ------------------------------------------------------------ 0.8: compare */
 
 .tp-compare {
@@ -4046,6 +4060,13 @@ button.tp-thumb-zone:focus-visible,
 
   .tp-compare-head .tp-preview-kind,
   .tp-compare-actions .tp-btn {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  /* Phones: the pattern list gets the room its filter box took. */
+  .tp-pats-filter {
     display: none;
   }
 }

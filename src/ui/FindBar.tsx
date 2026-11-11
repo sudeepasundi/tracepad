@@ -102,9 +102,7 @@ registerLayer({ priority: 10, modal: false, isOpen: () => findOpen.value !== nul
 
 function Toggle({ on, label, text, flip }: { on: boolean; label: string; text: string; flip: () => void }) {
   return (
-    <button type="button" class="tp-find-toggle" aria-pressed={on} aria-label={label} title={label} onClick={flip}>
-      {text}
-    </button>
+    <button type="button" class="tp-find-toggle" aria-pressed={on} aria-label={label} title={label} data-glyph={text} onClick={flip} />
   );
 }
 
