@@ -227,3 +227,27 @@ test('split view works inside the frame: layouts, Snap Assist, typing per pane, 
   expect((await state()).layout).toBe('single');
   await expect(app.locator('.tp-toast-error')).toHaveCount(0);
 });
+
+test('compare works inside the frame', async ({ page }) => {
+  const app = page.frameLocator('#embedded');
+  const inner = page.frames().find((f) => f.url().includes('tracepad.html'))!;
+  await openSample(app);
+  await app.getByRole('button', { name: 'New tab' }).click();
+  await app.locator('.cm-content').first().focus();
+  await page.keyboard.type('2026-03-14 10:00:00 ERROR c.a.Job - failed');
+  await page.keyboard.press('Alt+C');
+  const cmp = app.locator('.tp-compare');
+  await expect(cmp).toBeVisible();
+  await expect(app.locator('.tp-compare-name')).toHaveText(['untitled-1.txt', 'sample-spring-boot.log']);
+  await expect(app.locator('.tp-compare .cm-mergeViewEditor')).toHaveCount(2);
+  // Full screen is not allowed in the sandbox: the view fills the frame.
+  await app.getByRole('button', { name: 'Compare full screen' }).click();
+  const size = await inner.evaluate(() => {
+    const r = document.querySelector('.tp-compare')!.getBoundingClientRect();
+    return [r.x, r.y, r.width, r.height, innerWidth, innerHeight];
+  });
+  expect(size.slice(0, 4)).toEqual([0, 0, size[4], size[5]]);
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Escape');
+  await expect(cmp).toHaveCount(0);
+});

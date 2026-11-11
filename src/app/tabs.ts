@@ -5,6 +5,7 @@ import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab, saveTab } from '../files/fileio';
 import { copyToClipboard } from './clipboard';
 import { ask, toast } from './feedback';
+import { compareWith } from './compare';
 import { isSplit, paneOf, placeTab, showBeside, tabClosed, unsplit } from './panes';
 import { activeId, menu, newTabId, nextUntitledName, patchTab, renaming, tabs, type MenuItem, type Tab } from './state';
 
@@ -214,6 +215,7 @@ export function tabMenuItems(id: number, where: 'tab' | 'list'): MenuItem[] {
     { label: 'Rename…', hint: 'F2', run: () => startRename(id, where) },
     { label: 'Copy name', run: () => void copyTabName(id) },
     { separator: true, label: '' },
+    { label: 'Compare with…', hint: 'Alt+C', disabled: list.length < 2, run: () => compareWith(id) },
     { label: 'Show beside', hint: 'Ctrl+\\', disabled: list.length < 2 && !isSplit.value, run: () => showBeside(id) },
     { label: 'Back to one editor', disabled: !isSplit.value, run: unsplit },
     { separator: true, label: '' },

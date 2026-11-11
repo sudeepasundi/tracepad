@@ -273,7 +273,9 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
         data-line={line + 1}
         style={{ top: `${offset + (r - first) * rowH}px`, height: `${rowH}px` }}
         onClick={(e) => {
-          if (!window.getSelection()?.isCollapsed) return;
+          // Shift+click extends the line range (and must not leave a text selection behind); a drag that selected text is left alone.
+          if (e.shiftKey) window.getSelection()?.removeAllRanges();
+          else if (!window.getSelection()?.isCollapsed) return;
           b.cursor = line;
           if (!e.shiftKey) b.anchor = line;
           publishCursor(b);

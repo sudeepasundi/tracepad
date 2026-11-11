@@ -2,6 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { sidebar, tabs } from '../app/state';
 import { newTab } from '../app/tabs';
 import { Panes } from './Panes';
+import { Compare, ComparePicker } from './Compare';
 import { restoreLayout } from '../app/panes';
 import { initPaneSync } from '../app/panesync';
 import { TableEditor } from './TableEditor';
@@ -44,6 +45,7 @@ export function App() {
         <main class={`tp-main${panelOpen.value && results.value.length && panelMaximised.value ? ' is-panel-max' : ''}`}>
           <LogBar />
           <Panes />
+          <Compare />
           <ResultsPanel />
         </main>
       </div>
@@ -51,6 +53,7 @@ export function App() {
       <Palette />
       <MenuHost />
       <TableEditor />
+      <ComparePicker />
       <DialogHost />
       <Toasts />
       <DropOverlay />

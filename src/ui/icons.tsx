@@ -172,3 +172,8 @@ export const IconSwap = (p: P) => (
     <path d="M4 8h14l-3-3M20 16H6l3 3" />
   </Svg>
 );
+export const IconCompare = (p: P) => (
+  <Svg {...p}>
+    <path d="M4 5h6v14H4zM14 5h6v14h-6zM6.5 9h1M6.5 12h1M16.5 9h1M16.5 15h1" />
+  </Svg>
+);

@@ -3807,3 +3807,245 @@ button.tp-thumb-zone:focus-visible,
 .tp-tedit .tp-dialog-buttons {
   flex: none;
 }
+
+/* ------------------------------------------------------------ 0.8: compare */
+
+.tp-compare {
+  position: absolute;
+  inset: 0;
+  z-index: 9;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--tp-bg);
+}
+
+.tp-compare.is-fullscreen {
+  position: fixed;
+  z-index: 90;
+}
+
+.tp-compare-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 38px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--tp-border);
+  background: var(--tp-surface);
+  user-select: none;
+}
+
+.tp-compare-status {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.tp-compare-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.tp-compare-actions .tp-btn {
+  white-space: nowrap;
+}
+
+.tp-compare-actions .tp-btn[aria-pressed='true'] {
+  background: var(--tp-accent-soft);
+  border-color: var(--tp-accent-text);
+  color: var(--tp-accent-text);
+}
+
+.tp-compare-names {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: 1px solid var(--tp-border);
+  background: var(--tp-surface);
+}
+
+.tp-compare-name {
+  min-width: 0;
+  padding: 5px 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--tp-text);
+}
+
+.tp-compare-name + .tp-compare-name {
+  border-left: 1px solid var(--tp-border);
+}
+
+.tp-compare-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.tp-compare-body .cm-mergeView {
+  height: 100%;
+  overflow: auto;
+}
+
+/* The two sides meet at one line: no strip between them. */
+.tp-compare-body .cm-mergeViewEditors {
+  min-height: 100%;
+}
+
+.tp-compare-body .cm-mergeViewEditor {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.tp-compare-body .cm-mergeViewEditor + .cm-mergeViewEditor {
+  border-left: 1px solid var(--tp-border);
+}
+
+.tp-compare-body .cm-editor {
+  height: auto;
+  min-height: 100%;
+}
+
+.tp-compare-body .cm-content {
+  padding-bottom: 24px;
+}
+
+.tp-compare-body .cm-merge-a .cm-changedLine,
+.tp-compare-body .cm-deletedChunk {
+  background: color-mix(in srgb, var(--tp-danger) 13%, transparent);
+}
+
+.tp-compare-body .cm-merge-b .cm-changedLine {
+  background: color-mix(in srgb, var(--tp-ok) 14%, transparent);
+}
+
+.tp-compare-body .cm-merge-a .cm-changedText,
+.tp-compare-body .cm-deletedChunk .cm-deletedText {
+  background: color-mix(in srgb, var(--tp-danger) 32%, transparent);
+  border-radius: 2px;
+}
+
+.tp-compare-body .cm-merge-b .cm-changedText {
+  background: color-mix(in srgb, var(--tp-ok) 34%, transparent);
+  border-radius: 2px;
+}
+
+.tp-compare-body .cm-merge-a .cm-changedLineGutter {
+  background: var(--tp-danger);
+}
+
+.tp-compare-body .cm-merge-b .cm-changedLineGutter {
+  background: var(--tp-ok);
+}
+
+.tp-compare-body .cm-collapsedLines {
+  padding: 3px 12px;
+  background: var(--tp-surface);
+  color: var(--tp-muted);
+  border-top: 1px solid var(--tp-border);
+  border-bottom: 1px solid var(--tp-border);
+  font-family: var(--tp-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tp-compare-body .cm-collapsedLines:hover {
+  color: var(--tp-text);
+  background: var(--tp-surface-2);
+}
+
+.tp-compare-same {
+  position: absolute;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  padding: 8px 16px;
+  border: 1px solid var(--tp-border);
+  border-radius: 999px;
+  background: var(--tp-raised);
+  color: var(--tp-text);
+  box-shadow: 0 8px 24px var(--tp-shadow);
+  white-space: nowrap;
+}
+
+/* "Compare with…" list */
+.tp-dialog.tp-pick {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(520px, calc(100vw - 32px));
+  max-height: min(640px, calc(100vh - 32px));
+  max-height: min(640px, calc(100dvh - 32px));
+}
+
+.tp-pick-list {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 2px;
+  overflow: auto;
+}
+
+.tp-pick-item {
+  flex: none;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--tp-border);
+  border-radius: var(--tp-radius-s);
+  background: var(--tp-surface);
+  color: var(--tp-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-pick-item:hover,
+.tp-pick-item:focus-visible {
+  border-color: var(--tp-accent-text);
+  background: var(--tp-accent-softer);
+}
+
+.tp-pick-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tp-pick-meta {
+  flex: none;
+  font-size: 12px;
+  color: var(--tp-muted);
+}
+
+@media (max-width: 720px) {
+  .tp-compare-head {
+    gap: 6px;
+    padding: 0 4px 0 10px;
+  }
+
+  .tp-compare-head .tp-preview-kind,
+  .tp-compare-actions .tp-btn {
+    display: none;
+  }
+}

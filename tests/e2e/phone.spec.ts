@@ -274,3 +274,36 @@ test('split view on a phone: the panes stack, each with its header, and nothing 
   await expect(page.locator('.tp-pane')).toHaveCount(1);
   expect((await box(page.locator('.tp-pane'))).height).toBeCloseTo(area.height, 0);
 });
+
+test('the compare view fits a phone', async ({ page }) => {
+  await page.addInitScript(() => Object.defineProperty(window, 'showOpenFilePicker', { value: undefined }));
+  await page.reload();
+  await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+  const lines = Array.from({ length: 60 }, (_, i) => `setting.${i} = value ${i}`);
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Open a file', exact: true }).tap();
+  await (await chooser).setFiles([
+    { name: 'old.properties', mimeType: 'text/plain', buffer: Buffer.from(lines.join('\n')) },
+    { name: 'new.properties', mimeType: 'text/plain', buffer: Buffer.from(lines.map((l, i) => (i === 5 ? 'setting.5 = changed' : l)).join('\n')) },
+  ]);
+  await expect(page.getByRole('tab', { name: 'new.properties' })).toBeVisible();
+  await page.getByRole('button', { name: 'Search commands', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Search commands' }).fill('Compare with');
+  await page.keyboard.press('Enter');
+  const cmp = page.locator('.tp-compare');
+  await expect(cmp).toBeVisible();
+  await expect(page.locator('.tp-compare-status')).toHaveText('1 change');
+  const c = await box(cmp);
+  expect(c.x + c.width).toBeLessThanOrEqual(W + 0.5);
+  const head = await box(page.locator('.tp-compare-head'));
+  for (const b of await page.locator('.tp-compare-actions button:visible').all()) {
+    const bb = await box(b);
+    expect(bb.x).toBeGreaterThanOrEqual(head.x);
+    expect(bb.x + bb.width).toBeLessThanOrEqual(head.x + head.width);
+  }
+  const sides = await Promise.all((await page.locator('.tp-compare .cm-mergeViewEditor').all()).map(box));
+  expect(Math.abs(sides[0].width - sides[1].width)).toBeLessThan(3);
+  await fits(page);
+  await page.getByRole('button', { name: 'Close compare' }).tap();
+  await expect(cmp).toHaveCount(0);
+});

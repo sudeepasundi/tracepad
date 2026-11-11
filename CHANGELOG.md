@@ -2,6 +2,16 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.8.0
+
+Compare.
+
+- Compare two files side by side: right-click a tab (or a file in the Open files list) and choose "Compare with…", press Alt+C, or search "Compare" in the command palette. With two files open, or two side by side in a split, it goes straight to the comparison; otherwise you pick the other file from a list.
+- Changed lines are tinted on both sides, with the changed words marked. F7 and Shift+F7 (or the arrows) go to the next and previous change. "Hide unchanged" shows only the changes with a few lines around them. Swap sides, Refresh, and full screen are in the header. The two sides meet at a single line, with no strip between them.
+- In large files, Shift+click on a line's text (not only its number) now extends the selected range.
+- Limits: the comparison is read-only and shows the files as they were when it opened (Refresh takes them again); large files shown from disk cannot be compared.
+- Not included, by decision: the Copilot hand-off that was planned for this version. Tracepad has no Copilot button and opens no other site.
+
 ## 0.7.1
 
 - Fixed: "Edit as table" on a large table opened its editor far down the page, mostly off the screen. It now stays in the middle of the screen whatever the size of the table, and the grid scrolls inside it.

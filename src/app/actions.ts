@@ -12,6 +12,7 @@ import { FONT_MAX, FONT_MIN, DEFAULTS, settings, updateSettings } from './settin
 import { activeId, activeTab, cursor, filesFocus, paletteOpen, patchTab, sidebar, tabs, type SidebarPanel } from './state';
 import { applyLayout, focusPane, focusedPane, isSplit, paneTabs, toggleSplit, unsplit } from './panes';
 import { SPLIT_LAYOUTS } from './layouts';
+import { closeCompare, compare, compareWith, stepCompare } from './compare';
 import { activateTab, addTab, closeOthers, closeTab, copyTabName, cycleTab, moveTab, newTab, startRename } from './tabs';
 import { ACCENTS, THEMES } from './themes';
 import { countDuplicates, findInTabs, panelMaximised, panelOpen, results, runAutoTables, runExtract } from './results';
@@ -217,6 +218,19 @@ export function registerAllCommands(): void {
     { id: 'view.sync.time', title: 'Panes scroll together by time', category: 'View', run: () => updateSettings({ syncScroll: 'time' }) },
     { id: 'view.sync.line', title: 'Panes scroll together by line', category: 'View', run: () => updateSettings({ syncScroll: 'line' }) },
     { id: 'view.sync.off', title: 'Panes scroll separately', category: 'View', run: () => updateSettings({ syncScroll: 'off' }) },
+    { id: 'compare.with', title: 'Compare with…', category: 'Compare', keys: ['Alt+C'], run: () => compareWith() },
+    { id: 'compare.next', title: 'Next change', category: 'Compare', keys: ['F7'], run: () => stepCompare(1) },
+    { id: 'compare.previous', title: 'Previous change', category: 'Compare', keys: ['Shift+F7'], run: () => stepCompare(-1) },
+    { id: 'compare.fullscreen', title: 'Compare full screen', category: 'Compare', run: () => void (compare.value && toggleFullscreen('compare')) },
+    {
+      id: 'compare.close',
+      title: 'Close compare',
+      category: 'Compare',
+      run: () => {
+        if (fullscreen.value === 'compare') exitFullscreen();
+        closeCompare();
+      },
+    },
     { id: 'view.preview', title: 'Markdown preview', category: 'View', keys: ['Alt+P'], run: () => togglePreview(false) },
     { id: 'view.previewFull', title: 'Markdown preview full screen', category: 'View', keys: ['Alt+Shift+P'], run: () => togglePreview(true) },
     { id: 'view.pasteTables', title: 'Toggle converting pasted tables to Markdown', category: 'View', run: () => toggleSetting('pasteTables') },

@@ -298,3 +298,37 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+const PROPS = Array.from({ length: 140 }, (_, i) => `server.setting.${i} = value ${i}`);
+const PROPS_NEW = PROPS.map((l, i) => (i === 10 ? 'server.setting.10 = 250' : i === 11 ? 'server.setting.11 = value eleven, now longer' : i === 60 ? `${l}\nserver.pool.size = 32\nserver.pool.timeout = 30s` : l)).filter((_, i) => i !== 100 && i !== 101);
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots compare ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await useBasicFilePickers(page);
+      await openApp(page, th.settings);
+      await openViaChooser(page, [
+        { name: 'application-old.properties', mimeType: 'text/plain', buffer: Buffer.from(PROPS.join('\n') + '\n') },
+        { name: 'application-new.properties', mimeType: 'text/plain', buffer: Buffer.from(PROPS_NEW.join('\n') + '\n') },
+        { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('notes\n') },
+      ]);
+      await page.getByRole('tab', { name: 'notes.txt' }).waitFor();
+      await page.getByRole('tab', { name: 'application-old.properties' }).click({ button: 'right' });
+      await page.getByRole('menuitem', { name: /Compare with/ }).click();
+      await page.waitForTimeout(250);
+      await shot('26-compare-picker');
+      await page.locator('.tp-pick-item', { hasText: 'application-new' }).click();
+      await page.locator('.tp-compare').waitFor();
+      await page.keyboard.press('F7');
+      await page.waitForTimeout(400);
+      await shot('27-compare');
+      await page.getByRole('button', { name: 'Compare full screen' }).click();
+      await page.getByRole('button', { name: 'Next change' }).click();
+      await page.waitForTimeout(400);
+      await shot('28-compare-fullscreen');
+      await page.keyboard.press('Escape');
+      await page.keyboard.press('Escape');
+    });
+  }
+}

@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 7 (0.1.0 to 0.7.0) are shipped; next is 0.8 (compare view, Copilot hand-off with secret masking and a prompt preview).
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. Milestones 1 to 8 (0.1.0 to 0.8.0) are shipped; next is 1.0 (polish: accessibility and phone pass, performance pass, full test matrix, docs).
 
 ## Stack
 
@@ -38,7 +38,7 @@ src/ui/                 Preact components
 src/styles/app.css      all styles
 src/sw.template.js      service worker source; __CACHE__ and __FILES__ are filled at build
 tests/unit              Vitest
-tests/e2e               Playwright: app, files, tabs, logs, big, tables, markdown, split, appearance (both builds); pwa; single; iframe; phone; smoke
+tests/e2e               Playwright: app, files, tabs, logs, big, tables, markdown, split, compare, appearance (both builds); pwa; single; iframe; phone; smoke
                         linked.ts = real file handles for tests (origin private file system)
 tests/visual            screenshot run for human review
 ```
@@ -84,7 +84,6 @@ Release checklist (every change ships as a version):
 - **Session**: IndexedDB holds the full session (handles, big text), throttled to twice a second. A write started in `pagehide` does not reliably finish, so a small synchronous localStorage journal is written on exit and the newer of the two wins on start (`src/app/session.ts`). Tabs have a stable `uid` to join the two. A newly linked handle is saved at once.
 - **Testing linked files**: Playwright cannot drive native pickers. `tests/e2e/linked.ts` swaps `showOpenFilePicker` for one returning origin-private-file-system handles, which are real handles (writable, `move()`, storable in IndexedDB). Permission prompts are simulated by overriding `FileSystemFileHandle.prototype.queryPermission`.
 - **Artifact viewers block downloads** from the frame; in a cross-origin frame Save offers "Copy all text" as well.
-- **Tab context-menu**: "Show beside" exists since 0.7; "Compare with…" comes in 0.8.
 - **Git Bash mangles `--prefix /tracepad/`**; prefix manual runs of `scripts/serve.mjs` with `MSYS_NO_PATHCONV=1`.
 - **Shell heredocs mangle backslashes** in patch scripts; write the script to a file instead.
 - **Settings** are saved on a debounce and flushed on `pagehide`, `beforeunload` and when the page becomes hidden.
@@ -121,4 +120,5 @@ Release checklist (every change ships as a version):
 - **Dialogs that can grow** (the table editor): size them from the window (`max-height: min(760px, calc(100dvh - 32px))`), never with a percentage of the overlay. The overlay is a grid whose row grows to the content, so a percentage resolved against the content itself and the centred dialog ended up below the screen. Test dialogs with large content, not only small fixtures.
 - **Tests on an empty tab**: the welcome card covers the editor, so focus `.cm-content` instead of clicking it.
 - **Full screen** (0.6+): request it on the document root so toasts, menus and dialogs stay visible; handle Esc through the layer registry.
-- **Copilot** (0.8): Microsoft 365 Copilot cannot be iframed; use a popup.
+- **Compare** (`src/app/compare.ts`, `src/ui/Compare.tsx`): a `MergeView` from @codemirror/merge over read-only copies of the two documents (`readOnlyExtensions` in editor.ts). No `revertControls`, which is what would put a strip between the sides. It covers `.tp-main`; its Escape layer has priority 0.5, below full screen (1), so Escape leaves full screen first.
+- **No Copilot integration**: it was built for 0.8 and removed before release at the owner's request (no button, no prompt hand-off, no secret masking code). Do not add it back unless asked.
