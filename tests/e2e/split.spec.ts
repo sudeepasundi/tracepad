@@ -148,6 +148,10 @@ test.describe('layouts', () => {
       expect(state.layout).toBe(id);
       expect(state.tabs.filter(Boolean)).toHaveLength(count);
       expect(new Set(state.tabs).size).toBe(count);
+      // A log on screen brings the log bar, which makes the editor area shorter: wait for it before measuring.
+      if (state.tabs.some((t) => t?.endsWith('.log'))) await expect(page.locator('.tp-logbar[data-log-status="ready"]')).toBeVisible();
+      await expect.poll(async () => (await box(page.locator('.tp-editor-area'))).height === (await box(page.locator('.tp-editor-area'))).height).toBe(true);
+      await page.waitForTimeout(250);
       const area = await box(page.locator('.tp-editor-area'));
       const boxes = async () => Promise.all((await page.locator('.tp-pane').all()).map(box));
       tiles(area, await boxes());
