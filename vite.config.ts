@@ -2,7 +2,7 @@ import { defineConfig, type Plugin } from 'vite';
 import preact from '@preact/preset-vite';
 import { viteSingleFile } from 'vite-plugin-singlefile';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, renameSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string };
@@ -67,7 +67,12 @@ function renameSingle(): Plugin {
     name: 'tracepad-rename-single',
     apply: 'build',
     closeBundle() {
-      if (existsSync('dist-single/index.html')) renameSync('dist-single/index.html', 'dist-single/tracepad.html');
+      if (!existsSync('dist-single/index.html')) return;
+      renameSync('dist-single/index.html', 'dist-single/tracepad.html');
+      // A library keeps the replacement character in string literals. Hosts that
+      // embed the file treat a raw one as a damaged file, so write it as an escape.
+      const html = readFileSync('dist-single/tracepad.html', 'utf8');
+      if (html.includes('�')) writeFileSync('dist-single/tracepad.html', html.replaceAll('�', '\\uFFFD'));
     },
   };
 }
