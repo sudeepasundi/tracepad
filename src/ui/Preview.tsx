@@ -4,6 +4,7 @@
 // scrollbar sits at its outer edge and there is never a dead band.
 import { signal } from '@preact/signals';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
+import { copyToClipboard } from '../app/clipboard';
 import { toast } from '../app/feedback';
 import { PREVIEW_LIMIT, renderMarkdown } from '../app/markdown';
 import { settings, updateSettings } from '../app/settings';
@@ -38,14 +39,8 @@ function richHtml(root: Element): string {
 }
 
 async function writeClipboard(html: string, text: string, done: string): Promise<void> {
-  try {
-    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([html], { type: 'text/html' }), 'text/plain': new Blob([text], { type: 'text/plain' }) })]);
-    } else await navigator.clipboard.writeText(text);
-    toast(done, { kind: 'ok', ms: 2400 });
-  } catch {
-    toast('The clipboard is not available here.', { kind: 'error' });
-  }
+  if (await copyToClipboard({ html, text })) toast(done, { kind: 'ok', ms: 2400 });
+  else toast('The browser did not allow copying.', { kind: 'error' });
 }
 
 const cellText = (c: Element) => (c.textContent ?? '').replace(/\s+/g, ' ').trim();

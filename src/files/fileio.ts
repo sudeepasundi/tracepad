@@ -3,6 +3,7 @@
 import { docText, markSaved, setTabLanguage } from '../editor/editor';
 import { languageName } from '../editor/languages';
 import { scanBytes } from '../engine/client';
+import { copyToClipboard } from '../app/clipboard';
 import { ask, toast } from '../app/feedback';
 import { activeId, crossOriginFramed, dropActive, patchTab, tabs } from '../app/state';
 import { activateTab, addTab } from '../app/tabs';
@@ -221,15 +222,13 @@ export async function saveTabAs(id: number | null = activeId.value): Promise<boo
     });
     if (!r || r.button === 'cancel') return false;
     if (r.button === 'copy') {
-      try {
-        await navigator.clipboard.writeText(docText(id, tab.eol));
+      if (await copyToClipboard({ text: docText(id, tab.eol) })) {
         toast(`Copied the text of ${tab.name}. Paste it where you want to keep it.`, { kind: 'ok', ms: 5000 });
         markSaved(id);
         return true;
-      } catch {
-        toast('The clipboard is not available here. Select all (Ctrl+A) and copy (Ctrl+C) instead.', { kind: 'error' });
-        return false;
       }
+      toast('The browser did not allow copying. Select all (Ctrl+A) and copy (Ctrl+C) instead.', { kind: 'error' });
+      return false;
     }
   }
   const bytes = bytesFor(id);

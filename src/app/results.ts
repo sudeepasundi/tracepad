@@ -4,6 +4,7 @@ import { signal } from '@preact/signals';
 import { docOf, goToLine } from '../editor/editor';
 import { extractTab, mineTab, tableTab } from '../engine/client';
 import { countBy, toCsv, toHtml, toTsv, type Column, type ExtractSpec, type Table, type TemplateInfo, PRESET_TITLES } from '../engine/tables';
+import { copyToClipboard } from './clipboard';
 import { ask, toast } from './feedback';
 import { patchFilter } from './logs';
 import { activeId, tabs } from './state';
@@ -158,24 +159,14 @@ function capped(table: Table): Table {
 export async function copyRich(table: Table): Promise<void> {
   const t = capped(table);
   const note = table.rows.length > COPY_ROWS ? ` (the first ${COPY_ROWS.toLocaleString()} rows)` : '';
-  try {
-    if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
-      await navigator.clipboard.write([new ClipboardItem({ 'text/html': new Blob([toHtml(t, COPY_ROWS)], { type: 'text/html' }), 'text/plain': new Blob([toTsv(t)], { type: 'text/plain' }) })]);
-    } else await navigator.clipboard.writeText(toTsv(t));
-    toast(`Copied ${t.rows.length.toLocaleString()} rows as a table${note}`, { kind: 'ok', ms: 2600 });
-  } catch {
-    toast('The clipboard is not available here. Use "Open as new tab" and copy from there.', { kind: 'error' });
-  }
+  if (await copyToClipboard({ html: toHtml(t, COPY_ROWS), text: toTsv(t) })) toast(`Copied ${t.rows.length.toLocaleString()} rows as a table${note}`, { kind: 'ok', ms: 2600 });
+  else toast('The browser did not allow copying. Use "Open as new tab" and copy from there.', { kind: 'error' });
 }
 
 export async function copyCsv(table: Table): Promise<void> {
   const t = capped(table);
-  try {
-    await navigator.clipboard.writeText(toCsv(t));
-    toast(`Copied ${t.rows.length.toLocaleString()} rows as CSV`, { kind: 'ok', ms: 2200 });
-  } catch {
-    toast('The clipboard is not available here. Use "Open as new tab" and copy from there.', { kind: 'error' });
-  }
+  if (await copyToClipboard({ text: toCsv(t) })) toast(`Copied ${t.rows.length.toLocaleString()} rows as CSV`, { kind: 'ok', ms: 2200 });
+  else toast('The browser did not allow copying. Use "Open as new tab" and copy from there.', { kind: 'error' });
 }
 
 export function openAsTab(table: Table): void {

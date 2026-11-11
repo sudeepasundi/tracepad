@@ -3,6 +3,7 @@ import { languageName } from '../editor/languages';
 import type { Encoding } from '../files/encoding';
 import { largeLimitBytes, openBigFile } from '../files/bigopen';
 import { readForTab, saveTab } from '../files/fileio';
+import { copyToClipboard } from './clipboard';
 import { ask, toast } from './feedback';
 import { activeId, menu, newTabId, nextUntitledName, patchTab, renaming, tabs, type MenuItem, type Tab } from './state';
 
@@ -202,12 +203,8 @@ export async function renameTabTo(id: number, rawName: string): Promise<boolean>
 export async function copyTabName(id: number): Promise<void> {
   const tab = tabs.value.find((t) => t.id === id);
   if (!tab) return;
-  try {
-    await navigator.clipboard.writeText(tab.name);
-    toast(`Copied "${tab.name}"`, { kind: 'ok', ms: 1600 });
-  } catch {
-    toast('The clipboard is not available here.', { kind: 'error' });
-  }
+  if (await copyToClipboard({ text: tab.name })) toast(`Copied "${tab.name}"`, { kind: 'ok', ms: 1600 });
+  else toast('The browser did not allow copying.', { kind: 'error' });
 }
 
 export function tabMenuItems(id: number, where: 'tab' | 'list'): MenuItem[] {

@@ -2,6 +2,10 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 0.6.1
+
+- Fixed: "Copy as table" (and Copy CSV, Copy table, Copy as rich text, Copy name, and copying lines in large files) did nothing but show an error when the browser refuses clipboard permission. That happens when Tracepad is embedded in another page and on managed browsers where the permission is switched off. Copying now uses a way that needs no permission, only your click.
+
 ## 0.6.0
 
 Tables that survive pasting, and a Markdown preview.

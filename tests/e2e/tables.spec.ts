@@ -446,3 +446,38 @@ test.describe('other logs and tools', () => {
     expect(await column(page, 'count')).toEqual(['3', '2']);
   });
 });
+
+test.describe('copying when the clipboard permission is refused (managed browsers)', () => {
+  test.beforeEach(async ({ page }) => {
+    // What a browser does when policy blocks the clipboard permission: the asynchronous API rejects.
+    await page.addInitScript(() => {
+      const refuse = () => Promise.reject(new DOMException('Write permission denied.', 'NotAllowedError'));
+      Object.defineProperty(Clipboard.prototype, 'write', { value: refuse });
+      Object.defineProperty(Clipboard.prototype, 'writeText', { value: refuse });
+    });
+    await page.reload();
+    await expect(page.locator('html[data-ready="true"]')).toBeAttached();
+    await openSample(page);
+    await auto(page);
+  });
+
+  test('Copy as table and Copy CSV still work', async ({ page }) => {
+    await pick(page, 'Created order');
+    await tool(page, 'Copy as table').click();
+    await expect(page.locator('.tp-toast', { hasText: 'as a table' })).toBeVisible();
+    await expect(page.locator('.tp-toast-error')).toHaveCount(0);
+    const clip = await page.evaluate(async () => {
+      const [item] = await navigator.clipboard.read();
+      return { html: await (await item.getType('text/html')).text(), text: await (await item.getType('text/plain')).text() };
+    });
+    expect(clip.html).toContain('<table');
+    expect(clip.html).toMatch(/<th[^>]*>orderId<\/th>/);
+    expect((clip.html.match(/<tr>/g) ?? []).length).toBe((await shown(page))!.rows + 1);
+    expect(clip.text.replace(/\r\n/g, '\n').split('\n')[0]).toBe('line\ttime\tthread\torderId\tcustomerId\titems\ttotal\ttrace');
+    await tool(page, 'Copy CSV').click();
+    await expect(page.locator('.tp-toast', { hasText: 'as CSV' })).toBeVisible();
+    expect((await page.evaluate(() => navigator.clipboard.readText())).split(/\r?\n/)[0]).toBe('line,time,thread,orderId,customerId,items,total,trace');
+    // Copying did not disturb the page: focus and selection are where they were.
+    await expect(page.locator('.tp-toast-error')).toHaveCount(0);
+  });
+});

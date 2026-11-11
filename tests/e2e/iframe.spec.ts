@@ -165,3 +165,34 @@ test('pasted tables, the preview and its full screen work inside the frame', asy
   await frame.getByRole('button', { name: 'Leave full screen' }).click();
   await expect(frame.locator('.tp-preview')).not.toHaveClass(/is-fullscreen/);
 });
+
+test('Copy as table, Copy CSV and the preview copies work inside the frame', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(FRAME_HOST).origin });
+  const app = page.frameLocator('#embedded');
+  const inner = page.frames().find((f) => f.url().includes('tracepad.html'))!;
+  // The frame has no clipboard permission at all.
+  expect(await inner.evaluate(() => navigator.clipboard.writeText('x').then(() => 'allowed', () => 'refused'))).toBe('refused');
+  const read = async () => {
+    await page.evaluate(() => window.focus());
+    return page.evaluate(async () => {
+      const [item] = await navigator.clipboard.read();
+      const get = async (t: string) => (item.types.includes(t) ? (await (await item.getType(t)).text()).replace(/\r/g, '') : '');
+      return { html: await get('text/html'), text: await get('text/plain') };
+    });
+  };
+  await openSample(app);
+  await app.getByRole('button', { name: 'Auto tables', exact: true }).click();
+  await app.locator('.tp-pat', { hasText: 'Created order' }).click();
+  await expect(app.locator('.tp-vt-th .tp-vt-name', { hasText: 'customerId' })).toBeVisible();
+  await app.locator('.tp-table-tools').getByRole('button', { name: 'Copy as table' }).click();
+  await expect(app.locator('.tp-toast', { hasText: 'as a table' })).toBeVisible();
+  let clip = await read();
+  expect(clip.html).toContain('<table');
+  expect(clip.html).toMatch(/<th[^>]*>orderId<\/th>/);
+  expect(clip.text.split('\n')[0]).toBe('line\ttime\tthread\torderId\tcustomerId\titems\ttotal\ttrace');
+  await app.locator('.tp-table-tools').getByRole('button', { name: 'Copy CSV' }).click();
+  await expect(app.locator('.tp-toast', { hasText: 'as CSV' })).toBeVisible();
+  clip = await read();
+  expect(clip.text.split('\n')[0]).toBe('line,time,thread,orderId,customerId,items,total,trace');
+  await expect(app.locator('.tp-toast-error')).toHaveCount(0);
+});

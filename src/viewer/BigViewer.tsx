@@ -4,6 +4,7 @@
 import type { ComponentChildren } from 'preact';
 import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks';
 import { bigReveal, bigTick, ensureRows, getBig, lineOfRow, publishCursor, revealLine, rowCount, rowOfLine, selectedText, type BigTab } from '../app/big';
+import { copyToClipboard } from '../app/clipboard';
 import { toast } from '../app/feedback';
 import { settings } from '../app/settings';
 import { activeTab, type Tab } from '../app/state';
@@ -212,13 +213,10 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
       if (!window.getSelection()?.isCollapsed) return;
       void selectedText(b).then(async (text) => {
         if (text === null) return;
-        try {
-          await navigator.clipboard.writeText(text);
+        if (await copyToClipboard({ text })) {
           const n = Math.abs(b.cursor - b.anchor) + 1;
           toast(n === 1 ? 'Copied the current line' : `Copied ${n.toLocaleString()} lines`, { kind: 'ok', ms: 1800 });
-        } catch {
-          toast('The clipboard is not available here.', { kind: 'error' });
-        }
+        } else toast('The browser did not allow copying.', { kind: 'error' });
       });
     } else return;
     e.preventDefault();
