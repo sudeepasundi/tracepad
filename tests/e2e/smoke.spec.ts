@@ -88,7 +88,7 @@ test('split view, scroll together by time, and compare', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
-test('Markdown preview renders, sorts a table, and a pasted table becomes Markdown', async ({ page }) => {
+test('Markdown preview renders, sorts a table, and a pasted table becomes Markdown', async ({ page, browserName }) => {
   await openApp(page);
   await openViaChooser(page, [txt('notes.md', '# Notes\n\n| Name | Count |\n| --- | ---: |\n| b | 20 |\n| a | 3 |\n')]);
   await expect(page.getByRole('tab', { name: 'notes.md' })).toBeVisible();
@@ -97,6 +97,8 @@ test('Markdown preview renders, sorts a table, and a pasted table becomes Markdo
   await page.locator('.tp-md th', { hasText: 'Count' }).click();
   await expect(page.locator('.tp-md tbody tr').first()).toContainText('a');
   await page.getByRole('button', { name: 'Close preview' }).click();
+  // Firefox does not let a script build a paste event that carries data, so the paste half runs elsewhere.
+  if (browserName === 'firefox') return;
   // A paste event carrying tab-separated text (no clipboard permission needed).
   await page.locator('.cm-content').click();
   await page.keyboard.press('ControlOrMeta+End');
