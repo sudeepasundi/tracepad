@@ -7,6 +7,7 @@ import type { HighlightRule } from '../editor/log';
 import { goToLine, getView } from '../editor/editor';
 import { LEVEL_NAMES, LV } from '../engine/logparse';
 import { IconClose, IconPlus } from './icons';
+import { PRESET_RULES, presetOn } from '../engine/highlights';
 import { formatTime } from './LogBar';
 
 function duration(ms: number): string {
@@ -173,8 +174,33 @@ export function HighlightsPanel() {
   const patch = (id: number, p: Partial<HighlightRule>) => save(rules.map((r) => (r.id === id ? { ...r, ...p } : r)));
   const add = () => save([...rules, { id: Math.max(0, ...rules.map((r) => r.id)) + 1, pattern: '', regex: false, color: rules.length % 6, on: true }]);
 
+  const choices = settings.value.presetRules;
+  const flip = (id: string, on: boolean) => {
+    updateSettings({ presetRules: { ...choices, [id]: !on } });
+    refreshLogDecorations();
+  };
+
   return (
     <div class="tp-section">
+      <h3 class="tp-section-title">Ready-made, for logs</h3>
+      <ul class="tp-ready-list" role="list">
+        {PRESET_RULES.map((p) => {
+          const on = presetOn(p, choices);
+          return (
+            <li key={p.id}>
+              <button type="button" class="tp-ready" role="switch" aria-checked={on} onClick={() => flip(p.id, on)}>
+                <span class={`tp-ready-ink tp-hl-${p.color}`} aria-hidden="true" />
+                <span class="tp-ready-text">
+                  <span class="tp-ready-name">{p.name}</span>
+                  <span class="tp-ready-example">{p.example}</span>
+                </span>
+                <span class={`tp-switch${on ? ' is-on' : ''}`} aria-hidden="true" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <h3 class="tp-section-title tp-rules-title">Your own rules</h3>
       <p class="tp-help-text">Words or patterns to mark in every file, each in its own colour. Matching ignores case.</p>
       <ul class="tp-rules" role="list">
         {rules.map((r) => (

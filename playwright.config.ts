@@ -22,8 +22,8 @@ export default defineConfig({
     { command: `node scripts/serve.mjs --port 4175 --frame ${SINGLE}`, url: FRAME_HOST, reuseExistingServer: !CI },
   ],
   projects: [
-    { name: 'pwa', testMatch: /e2e[\\/](app|files|tabs|logs|big|biglog|tables|markdown|split|compare|a11y|appearance|pwa)\.spec\.ts/, use: { ...desktop, baseURL: PWA, permissions: ['clipboard-read', 'clipboard-write'] } },
-    { name: 'single', testMatch: /e2e[\\/](app|files|tabs|logs|big|tables|markdown|split|compare|appearance|single|iframe)\.spec\.ts/, use: { ...desktop, baseURL: SINGLE, permissions: ['clipboard-read', 'clipboard-write'] } },
+    { name: 'pwa', testMatch: /e2e[\\/](app|files|tabs|logs|big|biglog|tables|markdown|split|compare|highlights|a11y|appearance|pwa)\.spec\.ts/, use: { ...desktop, baseURL: PWA, permissions: ['clipboard-read', 'clipboard-write'] } },
+    { name: 'single', testMatch: /e2e[\\/](app|files|tabs|logs|big|tables|markdown|split|compare|highlights|appearance|single|iframe)\.spec\.ts/, use: { ...desktop, baseURL: SINGLE, permissions: ['clipboard-read', 'clipboard-write'] } },
     { name: 'phone', testMatch: /e2e[\\/]phone\.spec\.ts/, use: { baseURL: PWA, viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true, deviceScaleFactor: 2 } },
     { name: 'firefox', testMatch: /e2e[\\/]smoke\.spec\.ts/, use: { ...devices['Desktop Firefox'], baseURL: PWA } },
     { name: 'webkit', testMatch: /e2e[\\/]smoke\.spec\.ts/, use: { ...devices['Desktop Safari'], baseURL: PWA } },

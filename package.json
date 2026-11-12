@@ -1,6 +1,6 @@
 {
   "name": "tracepad",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "A browser text editor for backend developers: logs, tables and big files, fully offline.",
   "license": "MIT",

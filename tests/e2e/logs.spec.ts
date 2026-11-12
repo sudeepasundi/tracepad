@@ -398,6 +398,8 @@ test.describe('highlight rules', () => {
     await openSample(page);
     await logReady(page);
     await page.getByRole('button', { name: 'Highlight rules' }).click();
+    while ((await page.locator('.tp-ready[aria-checked="true"]').count()) > 0) await page.locator('.tp-ready[aria-checked="true"]').first().click();
+    await expect(page.locator('.tp-ready[aria-checked="true"]')).toHaveCount(0);
     await page.getByRole('button', { name: 'Add rule' }).click();
     await page.getByRole('textbox', { name: 'Text or pattern to highlight' }).fill('hikaripool');
     await expect(page.locator('.cm-content .tp-hl-0').first()).toHaveText('HikariPool');
@@ -425,5 +427,105 @@ test.describe('highlight rules', () => {
     await expect(page.locator('.tp-rule')).toHaveCount(2);
     await page.getByRole('button', { name: 'Delete rule Tomcat' }).click();
     await expect(page.locator('.cm-content .tp-hl-1')).toHaveCount(0);
+  });
+});
+
+/** Alpha of a computed colour: rgb() is opaque; rgba(), color(... / a) and color-mix results carry one. */
+function alphaOf(css: string): number {
+  if (css.startsWith('rgb(')) return 1;
+  const slash = /\/\s*([\d.]+)\s*\)$/.exec(css);
+  if (slash) return Number(slash[1]);
+  const rgba = /^rgba\([^,]+,[^,]+,[^,]+,\s*([\d.]+)\)$/.exec(css);
+  return rgba ? Number(rgba[1]) : 1;
+}
+
+test.describe('selection and highlighting', () => {
+  test('a selection shows on the line with the cursor and on your own stack frames', async ({ page }) => {
+    await openSample(page);
+    await logReady(page);
+    // CodeMirror draws the selection behind the lines: no line background may be opaque.
+    const bg = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    await editor(page).click();
+    expect(alphaOf(await bg('.cm-activeLine'))).toBeLessThan(0.2);
+    await page.keyboard.press('F8');
+    await expect(page.locator('.cm-line.tp-frame-own').first()).toBeVisible();
+    expect(alphaOf(await bg('.cm-line.tp-frame-own'))).toBeLessThan(0.2);
+    // A drag inside one line: the selection is drawn on that (active) line, under its text.
+    const line = page.locator('.cm-line.tp-frame-own').first();
+    const b = await box(line);
+    await page.mouse.move(b.x + 60, b.y + b.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(b.x + 260, b.y + b.height / 2, { steps: 6 });
+    await page.mouse.up();
+    const sel = await box(page.locator('.cm-selectionBackground').first());
+    expect(sel.y).toBeGreaterThanOrEqual(b.y - 1);
+    expect(sel.y + sel.height).toBeLessThanOrEqual(b.y + b.height + 1);
+    expect(sel.width).toBeGreaterThan(150);
+    await expect(line).toHaveClass(/cm-activeLine/);
+  });
+
+  test('a double-clicked word is outlined elsewhere; part of a word or a timestamp marks nothing', async ({ page }) => {
+    await openSample(page);
+    await logReady(page);
+    await page.locator('.cm-line', { hasText: 'HikariPool-1 - Starting' }).first().getByText('INFO').dblclick();
+    await expect(page.locator('.cm-selectionMatch').first()).toBeVisible();
+    expect(await page.locator('.cm-selectionMatch').count()).toBeGreaterThan(3);
+    const style = await page.locator('.cm-selectionMatch:not(.cm-selectionMatch-main)').first().evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, ring: getComputedStyle(el).boxShadow }));
+    expect(alphaOf(style.bg)).toBe(0);
+    expect(style.ring).toContain('inset');
+    // Selecting the start of a timestamp (not a whole word) marks nothing else.
+    const ts = page.locator('.cm-line', { hasText: 'HikariPool-1 - Starting' }).first();
+    const t = await box(ts);
+    await ts.click({ position: { x: 2, y: t.height / 2 } });
+    await page.keyboard.press('Home');
+    for (let i = 0; i < 13; i++) await page.keyboard.press('Shift+ArrowRight');
+    await expect(page.locator('.cm-selectionBackground').first()).toBeVisible();
+    await expect(page.locator('.cm-selectionMatch')).toHaveCount(0);
+  });
+
+  test('ready-made rules mark logs out of the box, can be switched off, and leave other files alone', async ({ page }) => {
+    await openSample(page);
+    await logReady(page);
+    await editor(page).click();
+    await page.keyboard.press('F8');
+    await expect(page.locator('.cm-content .tp-hl-3', { hasText: 'java.lang.NullPointerException' })).toBeVisible();
+    await page.getByRole('button', { name: 'Highlight rules' }).click();
+    const sw = page.getByRole('switch', { name: /Exception and error classes/ });
+    await expect(sw).toHaveAttribute('aria-checked', 'true');
+    await expect(page.getByRole('switch', { name: /Trace and span IDs/ })).toHaveAttribute('aria-checked', 'false');
+    // Swatch, name and switch sit in one row inside the sidebar.
+    const row = await box(sw);
+    const side = await box(page.locator('.tp-sidebar'));
+    expect(row.x + row.width).toBeLessThanOrEqual(side.x + side.width);
+    expect(row.height).toBeLessThan(64);
+    expect(overlaps(await box(sw.locator('.tp-ready-ink')), await box(sw.locator('.tp-switch')))).toBe(false);
+    await sw.click();
+    await expect(sw).toHaveAttribute('aria-checked', 'false');
+    await expect(page.locator('.cm-content .tp-hl-3')).toHaveCount(0);
+    await page.getByRole('switch', { name: /Trace and span IDs/ }).click();
+    await expect(page.locator('.cm-content .tp-hl-2').first()).toHaveText(/^[0-9a-f]{16,32}$/);
+    await page.reload();
+    await logReady(page);
+    await page.getByRole('button', { name: 'Highlight rules' }).click();
+    await expect(page.getByRole('switch', { name: /Exception and error classes/ })).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByRole('switch', { name: /Trace and span IDs/ })).toHaveAttribute('aria-checked', 'true');
+    // A Java file is not a log: the ready-made rules stay out of it.
+    await openViaChooser(page, [{ name: 'Main.java', mimeType: 'text/plain', buffer: Buffer.from('class Main {\n  // throws IllegalStateException after 900ms, retrying\n  String id = "4bf92f3577b34da6a3ce929d0e0e4736";\n}\n') }]);
+    await expect(page.getByRole('tab', { name: 'Main.java' })).toBeVisible();
+    await expect(page.locator('.cm-line').first()).toContainText('class Main');
+    await page.waitForTimeout(600);
+    await expect(page.locator('.cm-content .tp-hl')).toHaveCount(0);
+  });
+
+  test('the text filter marks what it matched in the lines it shows', async ({ page }) => {
+    await openSample(page);
+    await logReady(page);
+    await page.getByRole('textbox', { name: 'Filter entries by text' }).fill('pool');
+    await expect(count(page)).toHaveText(/^\d+ of 370 entries$/);
+    await expect(page.locator('.cm-content .tp-filter-hit').first()).toBeVisible();
+    for (const t of await page.locator('.cm-content .tp-filter-hit').allTextContents()) expect(t.toLowerCase()).toBe('pool');
+    expect(await contrastOf(page.locator('.cm-content .tp-filter-hit').first())).toBeGreaterThanOrEqual(4.5);
+    await page.getByRole('button', { name: 'Clear filters' }).click();
+    await expect(page.locator('.cm-content .tp-filter-hit')).toHaveCount(0);
   });
 });

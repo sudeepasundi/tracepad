@@ -2,6 +2,17 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 1.1.0
+
+Selection and highlighting.
+
+- Fixed: a selection was invisible on the line with the cursor, and on the highlighted stack frames from your own code. Both are now drawn see-through, so the selection always shows.
+- Selecting a word now outlines the other places it appears, instead of colouring them like a second selection. Only a single word counts (INFO, HikariPool, orderId): selecting part of a timestamp or any text with punctuation no longer lights up every line.
+- Ready-made highlight rules for logs, on from the start: exception and error class names, HTTP 4xx and 5xx statuses, slow times (500 ms or more), and timeouts, refusals and retries. Three more can be switched on: trace and span IDs, IP addresses, and SQL statements. They are at the top of the Highlight rules panel, each with an example; your own rules are below them and take precedence where both match. The ready-made rules apply to logs only; your own rules apply to every file.
+- The log filter now marks what it matched in the lines it shows, the same way the find box does.
+- Highlight rules and the filter's marks now also work in the large-file viewer.
+- Highlighted text on dimmed lines (DEBUG entries, library stack frames) now uses the full text colour, so it stays readable.
+
 ## 1.0.0
 
 Polish. Everything from the earlier versions, checked over.

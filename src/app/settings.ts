@@ -36,6 +36,8 @@ export interface Settings {
   syncScroll: 'time' | 'line' | 'off';
   /** The split that was on screen (tab uids per zone), to bring back after a reload. */
   splitLayout: { layout: LayoutId; uids: string[] } | null;
+  /** Ready-made highlight rules switched on or off (missing = its default). */
+  presetRules: Record<string, boolean>;
 }
 
 export const FONT_CHOICES: { id: string; name: string; stack: string }[] = [
@@ -73,6 +75,7 @@ export const DEFAULTS: Settings = {
   splitSizes: DEFAULT_SIZES,
   syncScroll: 'time',
   splitLayout: null,
+  presetRules: {},
 };
 
 const KEY = 'tracepad.settings';

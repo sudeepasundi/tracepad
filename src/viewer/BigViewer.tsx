@@ -9,7 +9,8 @@ import { toast } from '../app/feedback';
 import { settings } from '../app/settings';
 import { activeId, tabs, type Tab } from '../app/state';
 import { clearNavigator, notifyScroll, setNavigator, type Navigator } from '../editor/editor';
-import { isOwnFrame } from '../editor/log';
+import { currentRules, isOwnFrame } from '../editor/log';
+import { FILTER_MARK, findMarks, type CompiledRule } from '../engine/highlights';
 import { openFiles } from '../files/fileio';
 import { FLAG_CAUSE, FLAG_ENTRY, FLAG_FRAME } from '../engine/logparse';
 
@@ -25,7 +26,8 @@ export function formatBytes(n: number): string {
 }
 
 /** Splits a row into plain and marked pieces: find matches first, else the level word. */
-function pieces(text: string, find: RegExp | null, entry: boolean): ComponentChildren {
+/** Splits a row into plain and marked pieces: find matches first, else highlight rules and the level word. */
+function pieces(text: string, find: RegExp | null, entry: boolean, rules: CompiledRule[]): ComponentChildren {
   if (find) {
     const re = new RegExp(find.source, find.flags.includes('g') ? find.flags : `${find.flags}g`);
     const out: ComponentChildren[] = [];
@@ -46,11 +48,30 @@ function pieces(text: string, find: RegExp | null, entry: boolean): ComponentChi
       return out;
     }
   }
+  const marks: { from: number; to: number; node: (s: string) => ComponentChildren }[] = [];
   if (entry) {
     const m = WORD.exec(text.length > 200 ? text.slice(0, 200) : text);
-    if (m) return [text.slice(0, m.index), <span class={`tp-lvword tp-lvword-${WORD_LEVEL[m[0]]}`}>{m[0]}</span>, text.slice(m.index + m[0].length)];
+    if (m) marks.push({ from: m.index, to: m.index + m[0].length, node: (s) => <span class={`tp-lvword tp-lvword-${WORD_LEVEL[m[0]]}`}>{s}</span> });
   }
-  return text;
+  if (rules.length) {
+    const lead = marks[0];
+    for (const h of findMarks(text.length > 20_000 ? text.slice(0, 20_000) : text, rules, 200)) {
+      if (lead && h.from < lead.to && h.to > lead.from) continue;
+      marks.push({ from: h.from, to: h.to, node: (s) => <mark class={h.color === FILTER_MARK ? 'tp-filter-hit' : `tp-hl tp-hl-${h.color}`}>{s}</mark> });
+    }
+  }
+  if (!marks.length) return text;
+  marks.sort((a, b) => a.from - b.from);
+  const out: ComponentChildren[] = [];
+  let last = 0;
+  for (const m of marks) {
+    if (m.from < last) continue;
+    if (m.from > last) out.push(text.slice(last, m.from));
+    out.push(m.node(text.slice(m.from, m.to)));
+    last = m.to;
+  }
+  if (last < text.length) out.push(text.slice(last));
+  return out;
 }
 
 export function BigViewer({ tabId }: { tabId: number }) {
@@ -253,6 +274,7 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
   const offset = -(b.top - first) * rowH;
   const index = b.index;
   const find = b.find?.re ?? null;
+  const rules = currentRules(!!tab.isLog, true);
   const rows: ComponentChildren[] = [];
   for (let r = first; r < last; r++) {
     const line = lineOfRow(b, r);
@@ -285,7 +307,7 @@ function Viewer({ tab, b }: { tab: Tab; b: BigTab }) {
         <span class="tp-big-no" style={{ width: `${gutter}px` }}>
           {(line + 1).toLocaleString('en-US').replace(/,/g, '')}
         </span>
-        <span class="tp-big-text">{text === undefined ? '' : pieces(text, find, !!(flags & FLAG_ENTRY) && lv > 0)}</span>
+        <span class="tp-big-text">{text === undefined ? '' : pieces(text, find, !!(flags & FLAG_ENTRY) && lv > 0, rules)}</span>
       </div>,
     );
   }

@@ -1671,7 +1671,8 @@ dd {
   color: var(--tp-text);
   opacity: 1;
   font-weight: 600;
-  background: var(--tp-accent-softer);
+  /* See-through, so a selection (drawn behind the lines) still shows. */
+  background: color-mix(in srgb, var(--tp-accent) 10%, transparent);
 }
 
 .cm-line.tp-cause {
@@ -1703,6 +1704,8 @@ dd {
 }
 
 .tp-hl {
+  /* Full text colour: on dimmed lines (DEBUG, library frames) the muted grey is too faint on a highlight. */
+  color: var(--tp-text);
   border-radius: 2px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 55%, transparent);
   background: color-mix(in srgb, var(--ink) 34%, transparent);
@@ -4069,4 +4072,88 @@ button.tp-thumb-zone:focus-visible,
   .tp-pats-filter {
     display: none;
   }
+}
+
+/* -------------------------------------------- 1.1: ready-made highlight rules */
+
+.tp-ready-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 -6px 14px;
+}
+
+.tp-ready {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 5px 6px;
+  border: none;
+  border-radius: var(--tp-radius-s);
+  background: none;
+  color: var(--tp-text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tp-ready:hover {
+  background: var(--tp-surface-2);
+}
+
+.tp-ready-ink {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 70%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--ink) 80%, transparent);
+}
+
+.tp-ready[aria-checked='false'] .tp-ready-ink {
+  opacity: 0.35;
+}
+
+.tp-ready-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.tp-ready-name {
+  font-weight: 600;
+}
+
+.tp-ready-example {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--tp-mono);
+  font-size: 11.5px;
+  color: var(--tp-muted);
+}
+
+.tp-ready .tp-switch {
+  flex: none;
+}
+
+.tp-rules-title {
+  margin-top: 6px;
+}
+
+/* Highlight marks in the large-file viewer are <mark> elements: no browser yellow. */
+mark.tp-hl {
+  color: var(--tp-text);
+}
+
+/* The log filter's text in the lines it shows. */
+.tp-filter-hit {
+  border-radius: 2px;
+  background: var(--tp-match);
+  color: inherit;
 }

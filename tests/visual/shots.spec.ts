@@ -332,3 +332,36 @@ for (const vp of VIEWPORTS) {
     });
   }
 }
+
+for (const vp of VIEWPORTS) {
+  for (const th of THEMES) {
+    test(`shots highlights ${vp.name} ${th.name}`, async ({ page }) => {
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const shot = (name: string) => page.screenshot({ path: `shots/${name}-${vp.name}-${th.name}.png` });
+      await openApp(page, th.settings);
+      await openSample(page);
+      await page.locator('.cm-content').click();
+      await page.keyboard.press('F8');
+      await page.waitForTimeout(300);
+      // A selection across the error entry, ending on the line with the cursor.
+      const own = page.locator('.cm-line.tp-frame-own').last();
+      const err = await page.locator('.cm-line.tp-lv-5').first().boundingBox();
+      const end = await own.boundingBox();
+      if (err && end) {
+        await page.mouse.move(err.x + 30, err.y + err.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(end.x + Math.min(320, end.width - 10), end.y + end.height / 2, { steps: 6 });
+        await page.mouse.up();
+      }
+      await page.waitForTimeout(250);
+      await shot('32-selection');
+      await page.getByRole('button', { name: 'Highlight rules' }).click();
+      await page.waitForTimeout(250);
+      await shot('33-highlight-rules');
+      await page.getByRole('button', { name: 'Close sidebar' }).click();
+      await page.getByRole('textbox', { name: 'Filter entries by text' }).fill('pool');
+      await page.waitForTimeout(500);
+      await shot('34-filter-marks');
+    });
+  }
+}

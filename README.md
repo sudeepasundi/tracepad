@@ -4,13 +4,13 @@ A text editor that runs in the browser and is built for backend debugging: readi
 
 **Live app:** https://sudeepasundi.github.io/tracepad/
 
-Version 1.0. The [changelog](CHANGELOG.md) says what each release added.
+Version 1.1. The [changelog](CHANGELOG.md) says what each release added.
 
 ## What it does
 
 
 - **Tabs and files**: New, Open (several files at once), Save, Save As, drag and drop. Where the browser supports the File System Access API (Chrome, Edge), an opened file stays linked and Save writes back to it. Elsewhere, files open through the standard file picker and Save downloads a copy.
-- **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping and your own highlight rules.
+- **Logs**: automatic format detection (Spring Boot, Logback/Log4j, JSON lines, access logs, syslog, java.util.logging, epoch, Kubernetes prefixes), level colours, dimmed library stack frames, folding, ready-made highlight rules (exceptions, HTTP 4xx/5xx, slow calls, timeouts and retries; more to switch on) plus your own, a timeline you can click and drag, combined filters (level, text/regex, several patterns, logger/thread, trace ID, time range), F8 between errors, repeated-error grouping.
 - **Compare**: two files side by side with the changes marked, next and previous change, and full screen. Right-click a tab, press Alt+C, or use the command palette.
 - **Split view with snap layouts**: up to four files in five layouts, picked from thumbnails or by dragging a tab onto large drop zones. Panes scroll together by timestamp (or by line), and filters and Ctrl+F apply to every pane.
 - **Tables that survive pasting**: a table copied from an AI chat, a web page or Excel lands in a Markdown or plain-text tab as an aligned Markdown table; tab-, comma- and space-separated text is recognised too. Prose and code are left alone, and "Paste plain text instead" is one click away.

@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. All nine milestones are shipped; 1.0.0 is the current version. Later changes are fixes and requests, each shipped as its own version.
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. All nine milestones are shipped; 1.1.0 is the current version. Later changes are fixes and requests, each shipped as its own version.
 
 ## Stack
 
@@ -38,7 +38,7 @@ src/ui/                 Preact components
 src/styles/app.css      all styles
 src/sw.template.js      service worker source; __CACHE__ and __FILES__ are filled at build
 tests/unit              Vitest
-tests/e2e               Playwright: app, files, tabs, logs, big, tables, markdown, split, compare, appearance (both builds); pwa; single; iframe; phone; smoke
+tests/e2e               Playwright: app, files, tabs, logs, big, tables, markdown, split, compare, highlights, appearance (both builds); a11y; pwa; single; iframe; phone; smoke
                         linked.ts = real file handles for tests (origin private file system)
 tests/visual            screenshot run for human review
 ```
@@ -123,4 +123,7 @@ Release checklist (every change ships as a version):
 - **Compare** (`src/app/compare.ts`, `src/ui/Compare.tsx`): a `MergeView` from @codemirror/merge over read-only copies of the two documents (`readOnlyExtensions` in editor.ts). No `revertControls`, which is what would put a strip between the sides. It covers `.tp-main`; its Escape layer has priority 0.5, below full screen (1), so Escape leaves full screen first.
 - **Accessibility audit** (`tests/e2e/a11y.spec.ts`, axe, WCAG 2.1 A/AA, dark and light): add a `check(page, 'name')` for every new screen. What it has taught: a control inside a `role="tab"` is flagged, so the tab and result-tab close marks are `aria-hidden` spans (keyboard: Alt+W, Delete on a result tab, the tab menu); text that is not part of a control's name (shortcut hints, the file-count badge, the "Aa" and ".*" glyphs) is drawn by CSS from a data attribute; every scroller needs focusable content, so read-only text gets `tabindex="0"`; line numbers use the muted colour, not the faint one.
 - **Lazy pieces**: `src/app/markdown.ts` (markdown-it, DOMPurify) and `src/ui/Compare.tsx` (@codemirror/merge) are dynamic imports, loaded on first use; the service worker precaches their chunks and the single-file build inlines them. Keep anything they need at start-up out of those files (the compare picker lives in `ComparePicker.tsx` for that reason).
+- **Nothing behind the text may be opaque**: CodeMirror draws the selection in a layer behind the lines, so any opaque line background (the active line, own-package stack frames) hides the selection on that line. Line backgrounds use `color-mix(... transparent)`; `logs.spec.ts` checks their alpha.
+- **Highlight rules** (`src/engine/highlights.ts`, pure, unit-tested): `PRESET_RULES` (ready-made, on/off stored in `settings.presetRules`, logs only) and the user's rules compile together (user rules first, they win overlaps); `findMarks` returns non-overlapping marks per line and is shared by the editor (`log.ts`) and the large-file viewer. The filter's own marks (`filterRule`, colour `FILTER_MARK`) go first. Class names: `.tp-preset` already belongs to the Extract panel; the ready-made rules use `.tp-ready*`.
+- **Selected-word marks** (`src/editor/wordmatches.ts`) replace CodeMirror's `highlightSelectionMatches`, whose "whole words" option still treats `2026-03-14T10` as a word.
 - **No Copilot integration**: it was built for 0.8 and removed before release at the owner's request (no button, no prompt hand-off, no secret masking code). Do not add it back unless asked.

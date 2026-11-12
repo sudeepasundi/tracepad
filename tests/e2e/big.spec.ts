@@ -581,3 +581,19 @@ test.describe('large files that change on disk', () => {
     await expect(page.locator('.tp-status')).toContainText('Read-only');
   });
 });
+
+test('large files: highlight rules and the filter matches are marked in the viewer too', async ({ page }) => {
+  await useBasicFilePickers(page);
+  await openApp(page, { largeFileMB: 0.001 });
+  const text = readFileSync('src/assets/sample-spring.log', 'utf8');
+  await openViaChooser(page, [{ name: 'big-sample.log', mimeType: 'text/plain', buffer: Buffer.from(text) }]);
+  await expect(page.locator('.tp-big[data-status="ready"]')).toBeVisible();
+  await page.locator('.tp-big').focus();
+  await page.keyboard.press('F8');
+  await expect(page.locator('.tp-big mark.tp-hl-3', { hasText: 'java.lang.NullPointerException' })).toBeVisible();
+  // The level word keeps its colour next to the marks.
+  await expect(page.locator('.tp-big .tp-lvword-5').first()).toBeVisible();
+  await page.getByRole('textbox', { name: 'Filter entries by text' }).fill('pool');
+  await expect(page.locator('.tp-big mark.tp-filter-hit').first()).toBeVisible();
+  for (const t of await page.locator('.tp-big mark.tp-filter-hit').allTextContents()) expect(t.toLowerCase()).toBe('pool');
+});

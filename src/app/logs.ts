@@ -4,9 +4,12 @@ import { effect, signal } from '@preact/signals';
 import type { Text } from '@codemirror/state';
 import { foldAll, unfoldAll } from '@codemirror/language';
 import { currentLine, dispatchToTab, docOf, docTick, getView, goToLine } from '../editor/editor';
-import { refreshLog, setHidden, setLogIndex } from '../editor/log';
+import { refreshLog, setFilterMark, setHidden, setLogIndex } from '../editor/log';
+import { filterRule } from '../engine/highlights';
 import { dropLog, filterBig, filterLog, groupBig, groupLog, parseLog, type PageIndex } from '../engine/client';
-import { dropBig, setBigBusy, setBigMask } from './big';
+import { bigTick, dropBig, setBigBusy, setBigMask } from './big';
+
+const bumpBig = () => void (bigTick.value = bigTick.peek() + 1);
 import { EMPTY_FILTER, isEmptyFilter, type ErrorGroup, type FilterSpec } from '../engine/logfilter';
 import { FLAG_ENTRY, FORMAT_NAMES, LV } from '../engine/logparse';
 import { toast } from './feedback';
@@ -353,8 +356,11 @@ export function initLogs(): void {
   // Re-filter when the filter changes or another tab comes to the front.
   let filterTimer: ReturnType<typeof setTimeout> | undefined;
   effect(() => {
-    void logFilter.value;
+    const spec = logFilter.value;
     const ids = visibleTabs.value;
+    setFilterMark(filterRule(spec));
+    for (const t of tabs.peek()) dispatchToTab(t.id, { effects: refreshLog.of(null) });
+    bumpBig();
     if (!ids.length) return;
     if (filterTimer) clearTimeout(filterTimer);
     // One filter for every pane.

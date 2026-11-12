@@ -8,6 +8,7 @@ import { foldService } from '@codemirror/language';
 import { settings } from '../app/settings';
 import type { PageIndex } from '../engine/client';
 import { FLAG_CAUSE, FLAG_ENTRY, FLAG_FRAME } from '../engine/logparse';
+import { PRESET_RULES, compileRules, findMarks, type CompiledRule, type UserRule } from '../engine/highlights';
 
 export const setLogIndex = StateEffect.define<PageIndex | null>();
 /** 1 = shown; null clears the filter. */
@@ -131,60 +132,56 @@ const logColours = ViewPlugin.fromClass(
 
 // ---- user highlight rules -------------------------------------------------
 
-export interface HighlightRule {
-  id: number;
-  pattern: string;
-  regex: boolean;
-  /** 0-5: one of six highlight colours. */
-  color: number;
-  on: boolean;
+export type HighlightRule = UserRule;
+
+const MARKS = [...Array.from({ length: 6 }, (_, i) => Decoration.mark({ class: `tp-hl tp-hl-${i}` })), Decoration.mark({ class: 'tp-filter-hit' })];
+
+/** The log filter's text, marked in the lines it shows. Set by app/logs.ts. */
+let filterMark: CompiledRule | null = null;
+export function setFilterMark(rule: CompiledRule | null): void {
+  filterMark = rule;
 }
 
-function compileRules(): { re: RegExp; deco: Decoration }[] {
-  const out: { re: RegExp; deco: Decoration }[] = [];
-  for (const r of settings.value.highlights) {
-    if (!r.on || !r.pattern) continue;
-    try {
-      const re = new RegExp(r.regex ? r.pattern : r.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-      if (re.test('')) continue; // matches the empty string: would loop forever
-      out.push({ re, deco: Decoration.mark({ class: `tp-hl tp-hl-${r.color % 6}` }) });
-    } catch {
-      /* an invalid pattern is simply not applied; the panel marks it */
-    }
+/** Compiled rules, rebuilt only when the settings object changes. */
+let cache: { key: unknown; all: CompiledRule[]; user: CompiledRule[] } | null = null;
+export function currentRules(isLog: boolean, withFilter = false): CompiledRule[] {
+  if (withFilter && isLog && filterMark) return [filterMark, ...currentRules(true)];
+  const s = settings.value;
+  if (!cache || cache.key !== s) {
+    const none = Object.fromEntries(PRESET_RULES.map((p) => [p.id, false]));
+    cache = { key: s, all: compileRules(s.highlights, s.presetRules), user: compileRules(s.highlights, none) };
   }
-  return out;
+  // The ready-made rules are for logs; your own rules apply to every file.
+  return isLog ? cache.all : cache.user;
 }
 
 const highlightRules = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
-    rules = compileRules();
     constructor(view: EditorView) {
       this.decorations = this.build(view);
     }
     update(u: ViewUpdate): void {
       const refreshed = u.transactions.some((t) => t.effects.some((e) => e.is(refreshLog)));
-      if (refreshed) this.rules = compileRules();
-      if (refreshed || u.docChanged || u.viewportChanged) this.decorations = this.build(u.view);
+      const attached = u.startState.field(logIndexField).index !== u.state.field(logIndexField).index;
+      if (refreshed || attached || u.docChanged || u.viewportChanged) this.decorations = this.build(u.view);
     }
     build(view: EditorView): DecorationSet {
-      if (!this.rules.length) return Decoration.none;
-      const found: { from: number; to: number; deco: Decoration }[] = [];
+      const isLog = view.state.field(logIndexField).index !== null;
+      // The filter's matches first: they say why a line is shown.
+      const rules = isLog && filterMark ? [filterMark, ...currentRules(true)] : currentRules(isLog);
+      if (!rules.length) return Decoration.none;
+      const b = new RangeSetBuilder<Decoration>();
       for (const range of view.visibleRanges) {
-        const text = view.state.sliceDoc(range.from, Math.min(range.to, range.from + 200_000));
-        for (const rule of this.rules) {
-          rule.re.lastIndex = 0;
-          let m: RegExpExecArray | null;
-          let guard = 0;
-          while ((m = rule.re.exec(text)) && guard++ < 2000) {
-            if (m[0].length === 0) rule.re.lastIndex++;
-            else if (!m[0].includes('\n')) found.push({ from: range.from + m.index, to: range.from + m.index + m[0].length, deco: rule.deco });
-          }
+        // Line by line: a match never runs across lines, and the cost stays with what is on screen.
+        let pos = range.from;
+        while (pos <= range.to) {
+          const line = view.state.doc.lineAt(pos);
+          const text = line.text.length > 20_000 ? line.text.slice(0, 20_000) : line.text;
+          for (const m of findMarks(text, rules, 400)) b.add(line.from + m.from, line.from + m.to, MARKS[m.color]);
+          pos = line.to + 1;
         }
       }
-      found.sort((a, b) => a.from - b.from || a.to - b.to);
-      const b = new RangeSetBuilder<Decoration>();
-      for (const f of found) b.add(f.from, f.to, f.deco);
       return b.finish();
     }
   },
