@@ -2,6 +2,14 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 1.1.1
+
+- The SQL rule now marks whole statements, not just the keyword, and is on from the start. It finds `select … from`, `insert into`, `update … set`, `delete from`, `merge into` and `with … as (select`, in any case, so Hibernate's lower-case SQL is covered (1.1.0 only matched upper-case keywords). A statement runs to a semicolon or the end of its log entry.
+- SQL that Hibernate pretty-prints over several lines (`format_sql`) is marked on every line it spans, without the indentation, and never into a stack trace or the next entry.
+- The statement gets a light tint, so a slow time or the filter's matches inside it still stand out. Ordinary sentences such as "please select a value from the list" are not marked.
+- Works the same in the large-file viewer.
+- Fixed: with panes scrolling together by time, a log that finished loading after you had already scrolled another pane stayed where it was until the next scroll. It now lines up as soon as it is ready.
+
 ## 1.1.0
 
 Selection and highlighting.

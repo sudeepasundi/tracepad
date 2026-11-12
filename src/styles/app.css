@@ -4157,3 +4157,10 @@ mark.tp-hl {
   background: var(--tp-match);
   color: inherit;
 }
+
+/* A whole SQL statement: a light tint, so marks inside it still stand out. */
+.tp-sql {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--tp-ink-2) 17%, transparent);
+  color: var(--tp-text);
+}

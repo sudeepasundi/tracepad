@@ -21,6 +21,8 @@ export interface PresetRule {
   color: number;
   /** On until the user switches it off. */
   defaultOn: boolean;
+  /** 'statement': matched over a whole log entry (it may span lines), not line by line. */
+  kind?: 'statement';
 }
 
 /** Ready-made rules for Java and Spring Boot logs. */
@@ -82,12 +84,14 @@ export const PRESET_RULES: PresetRule[] = [
   },
   {
     id: 'sql',
-    name: 'SQL statements',
-    example: 'SELECT, INSERT INTO, UPDATE, DELETE FROM',
-    pattern: String.raw`\b(?:SELECT|INSERT INTO|UPDATE|DELETE FROM|MERGE INTO)\b`,
-    flags: 'g',
+    name: 'SQL statements, whole',
+    example: 'select o.id from orders o where o.id=?',
+    // The pattern lives in findStatements (it spans lines); this one is only for the panel's own checks.
+    pattern: String.raw`\b(?:select|insert|update|delete|merge|with)\b`,
+    flags: 'gi',
     color: 2,
-    defaultOn: false,
+    defaultOn: true,
+    kind: 'statement',
   },
 ];
 
@@ -114,7 +118,7 @@ export function compileRules(user: readonly UserRule[], choices: Record<string, 
     }
   };
   for (const r of user) if (r.on && r.pattern) add(r.regex ? r.pattern : r.pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi', r.color);
-  for (const p of PRESET_RULES) if (presetOn(p, choices)) add(p.pattern, p.flags, p.color);
+  for (const p of PRESET_RULES) if (p.kind !== 'statement' && presetOn(p, choices)) add(p.pattern, p.flags, p.color);
   return out;
 }
 
@@ -186,4 +190,102 @@ export function filterRule(f: { text: string; regex: boolean; caseSensitive: boo
   } catch {
     return null;
   }
+}
+
+// ------------------------------------------------------------ SQL statements
+
+const NAME = String.raw`[\w.$"\`\[\]]+`;
+/** One item of a select list: a column, a function call, *, with an optional "as alias". */
+const ITEM = String.raw`[\w.$*"\`]+(?:\([^()]*\))?(?:\s+as\s+\w+)?`;
+/** How a statement starts. Each shape needs more than the keyword, so prose ("select a value from the list") does not count. */
+const START = [
+  String.raw`\bselect\s+(?:distinct\s+|top\s+\d+\s+)?(?:${ITEM}\s*,\s*)*${ITEM}\s+from\s+${NAME}`,
+  String.raw`\binsert\s+into\s+${NAME}`,
+  String.raw`\bupdate\s+${NAME}\s+set\s+[\w.$"\`]+\s*=`,
+  String.raw`\bdelete\s+from\s+${NAME}`,
+  String.raw`\bmerge\s+into\s+${NAME}`,
+  String.raw`\bwith\s+(?:recursive\s+)?\w+\s+as\s*\(\s*select\b`,
+].join('|');
+/**
+ * The rest: to the end of the line, then on through indented lines (SQL that
+ * Hibernate pretty-prints), but never into a stack frame, a "Caused by", or a
+ * new log entry. A semicolon ends it.
+ */
+const REST = String.raw`[^;\n]*(?:\n(?![ \t]*(?:at\s|Caused by|\.\.\.\s\d|\d{4}-\d\d-\d\d))[ \t]+[^;\n]*)*;?`;
+const STATEMENT = new RegExp(`(?:${START})${REST}`, 'gi');
+const CLOSE: Record<string, string> = { '[': ']', '"': '"', "'": "'", '(': ')' };
+
+/** Whole SQL statements in a block of text (one log entry, which may span lines). */
+export function findStatements(block: string, limit = 50): { from: number; to: number }[] {
+  const out: { from: number; to: number }[] = [];
+  STATEMENT.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = STATEMENT.exec(block)) && out.length < limit) {
+    const from = m.index;
+    let to = from + m[0].length;
+    // Quoted or bracketed in a message ("... [insert into t values (?)]; SQL [n/a]"): stop at the closing mark.
+    const close = CLOSE[block[from - 1] ?? ''];
+    if (close) {
+      const end = block.indexOf(close, from);
+      if (end > from && end < to) to = end;
+    }
+    while (to > from && /\s/.test(block[to - 1])) to--;
+    if (to > from) out.push({ from, to });
+    STATEMENT.lastIndex = Math.max(to, from + 1);
+  }
+  return out;
+}
+
+export function statementsOn(choices: Record<string, boolean>): boolean {
+  const sql = PRESET_RULES.find((p) => p.kind === 'statement');
+  return !!sql && presetOn(sql, choices);
+}
+
+export type Segment = { from: number; to: number };
+
+/**
+ * SQL statements around the given lines (0-based), as pieces per line. Each
+ * line's whole log entry is read (up to 300 lines either way), so a statement
+ * that Hibernate spreads over several lines is found from any of them.
+ * `getLine` may return undefined for text that is not loaded: the entry is
+ * then read only up to there.
+ */
+export function statementSegments(lines: readonly number[], count: number, getLine: (i: number) => string | undefined, isEntry: (i: number) => boolean): Map<number, Segment[]> {
+  const out = new Map<number, Segment[]>();
+  let coveredTo = -1;
+  for (const i of [...lines].sort((a, b) => a - b)) {
+    if (i <= coveredTo || i < 0 || i >= count) continue;
+    let s = i;
+    for (let guard = 0; s > 0 && !isEntry(s) && guard < 300; guard++) s--;
+    let e = i;
+    for (let guard = 0; e + 1 < count && !isEntry(e + 1) && guard < 300; guard++) e++;
+    coveredTo = e;
+    const texts: string[] = [];
+    for (let k = s; k <= e; k++) {
+      const t = getLine(k);
+      if (t === undefined) break;
+      texts.push(t.length > 20_000 ? t.slice(0, 20_000) : t);
+    }
+    if (!texts.length) continue;
+    const starts: number[] = [];
+    let pos = 0;
+    for (const t of texts) {
+      starts.push(pos);
+      pos += t.length + 1;
+    }
+    for (const st of findStatements(texts.join('\n'))) {
+      for (let k = 0; k < texts.length; k++) {
+        let a = Math.max(st.from, starts[k]) - starts[k];
+        let b = Math.min(st.to, starts[k] + texts[k].length) - starts[k];
+        // Not the indentation of a pretty-printed line, nor trailing spaces.
+        while (a < b && /\s/.test(texts[k][a])) a++;
+        while (b > a && /\s/.test(texts[k][b - 1])) b--;
+        if (b <= a) continue;
+        const list = out.get(s + k) ?? [];
+        list.push({ from: a, to: b });
+        out.set(s + k, list);
+      }
+    }
+  }
+  return out;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PRESET_RULES, compileRules, filterRule, findMarks, presetOn, type UserRule } from '../../src/engine/highlights';
+import { PRESET_RULES, compileRules, filterRule, findMarks, findStatements, presetOn, statementSegments, statementsOn, type UserRule } from '../../src/engine/highlights';
 
 /** What one ready-made rule (alone) marks in a text. */
 function marked(id: string, text: string): string[] {
@@ -12,13 +12,14 @@ describe('ready-made highlight rules', () => {
     for (const p of PRESET_RULES) {
       const re = new RegExp(p.pattern, p.flags);
       expect(re.test(''), p.id).toBe(false);
-      expect(marked(p.id, p.example).length, p.id).toBeGreaterThan(0);
+      if (p.kind === 'statement') expect(findStatements(p.example), p.id).toEqual([{ from: 0, to: p.example.length }]);
+      else expect(marked(p.id, p.example).length, p.id).toBeGreaterThan(0);
     }
   });
 
   it('the useful four are on by default, the noisier ones off', () => {
     const on = PRESET_RULES.filter((p) => presetOn(p, {})).map((p) => p.id);
-    expect(on).toEqual(['exceptions', 'http', 'slow', 'trouble']);
+    expect(on).toEqual(['exceptions', 'http', 'slow', 'trouble', 'sql']);
     expect(presetOn(PRESET_RULES[0], { exceptions: false })).toBe(false);
     expect(presetOn(PRESET_RULES[4], { trace: true })).toBe(true);
   });
@@ -52,7 +53,6 @@ describe('ready-made highlight rules', () => {
   it('trace IDs, IP addresses and SQL', () => {
     expect(marked('trace', '[orders,4bf92f3577b34da6a3ce929d0e0e4736,00f067aa0ba902b7]')).toEqual(['4bf92f3577b34da6a3ce929d0e0e4736', '00f067aa0ba902b7']);
     expect(marked('ip', 'from 10.0.4.17:8080 and 192.168.1.1, not 999.1.1.1 or 1.2.3')).toEqual(['10.0.4.17:8080', '192.168.1.1']);
-    expect(marked('sql', 'select x; SELECT id FROM orders; DELETE FROM t')).toEqual(['SELECT', 'DELETE FROM']);
   });
 });
 
@@ -108,5 +108,72 @@ describe('filterRule', () => {
 
   it('patterns join the text: plain ones ignore case, /regex/ ones keep their flags', () => {
     expect(hits('Slow query took 900ms; order 7 failed', spec({ text: 'order', patterns: ['SLOW QUERY', '/\\d+ms/'] }))).toEqual(['Slow query', '900ms', 'order']);
+  });
+});
+
+describe('findStatements (whole SQL statements)', () => {
+  const found = (block: string) => findStatements(block).map((m) => block.slice(m.from, m.to));
+
+  it('Hibernate one-liners, in lower case, from the keyword to the end', () => {
+    expect(found('org.hibernate.SQL : update orders set status=?,updated_at=? where id=?')).toEqual(['update orders set status=?,updated_at=? where id=?']);
+    expect(found('org.hibernate.SQL : select o1_0.id,o1_0.customer_id,o1_0.status from orders o1_0 where o1_0.id=?')).toEqual(['select o1_0.id,o1_0.customer_id,o1_0.status from orders o1_0 where o1_0.id=?']);
+    expect(found('org.hibernate.SQL : insert into orders (customer_id,status,total) values (?,?,?)')).toEqual(['insert into orders (customer_id,status,total) values (?,?,?)']);
+    expect(found('delete from order_items where order_id=?')).toEqual(['delete from order_items where order_id=?']);
+    expect(found('SELECT COUNT(*) AS n FROM orders WHERE status = ?')).toEqual(['SELECT COUNT(*) AS n FROM orders WHERE status = ?']);
+  });
+
+  it('a statement in the middle of a message, and one per semicolon', () => {
+    expect(found('Slow query took 4628ms rows=458 sql=select * from orders where created_at > ?')).toEqual(['select * from orders where created_at > ?']);
+    expect(found('ran: update a set x=1; update b set y=2; done')).toEqual(['update a set x=1;', 'update b set y=2;']);
+    expect(found('could not execute statement [insert into orders (id) values (?)]; SQL [n/a]')).toEqual(['insert into orders (id) values (?)']);
+  });
+
+  it('pretty-printed SQL (format_sql) across lines, but not into a stack trace or the next entry', () => {
+    const entry = [
+      '2026-03-14 10:00:01.000 DEBUG [main] org.hibernate.SQL : ',
+      '    select',
+      '        o1_0.id,',
+      '        o1_0.status ',
+      '    from',
+      '        orders o1_0 ',
+      '    where',
+      '        o1_0.id=?',
+    ].join('\n');
+    expect(found(entry)).toEqual([entry.slice(entry.indexOf('select'))]);
+    const withTrace = 'SQL Error: update orders set status=? where id=?\n\tat com.acme.Repo.save(Repo.java:12)\nCaused by: x';
+    expect(found(withTrace)).toEqual(['update orders set status=? where id=?']);
+    const next = 'insert into t (a) values (?)\n2026-03-14 10:00:02.000 INFO next entry';
+    expect(found(next)).toEqual(['insert into t (a) values (?)']);
+  });
+
+  it('ordinary sentences are not SQL', () => {
+    for (const prose of [
+      'Please select a value from the list',
+      'select the best option from them',
+      'We will update the record set soon',
+      'delete it from here',
+      'insert the card',
+      'Merge requests into main',
+    ])
+      expect(found(prose), prose).toEqual([]);
+  });
+
+  it('is a switchable ready-made rule, on by default, and not part of the line rules', () => {
+    expect(statementsOn({})).toBe(true);
+    expect(statementsOn({ sql: false })).toBe(false);
+    const only = Object.fromEntries(PRESET_RULES.map((p) => [p.id, p.id === 'sql']));
+    expect(compileRules([], only)).toEqual([]);
+  });
+});
+
+describe('statementSegments', () => {
+  it('cuts a statement into per-line pieces without indentation, found from any of its lines', () => {
+    const lines = ['2026-03-14 10:00:09.000 DEBUG [main] org.hibernate.SQL - ', '    update', '        orders ', '    set', '        status=?', '2026-03-14 10:00:10.000 INFO next'];
+    const isEntry = (i: number) => /^\d{4}-/.test(lines[i]);
+    const segs = statementSegments([3], lines.length, (i) => lines[i], isEntry);
+    expect([...segs.keys()]).toEqual([1, 2, 3, 4]);
+    expect([1, 2, 3, 4].map((i) => segs.get(i)!.map((x) => lines[i].slice(x.from, x.to)).join(''))).toEqual(['update', 'orders', 'set', 'status=?']);
+    // Text that is not loaded ends the entry early, and nothing breaks.
+    expect(statementSegments([3], lines.length, (i) => (i < 3 ? lines[i] : undefined), isEntry).size).toBe(0);
   });
 });

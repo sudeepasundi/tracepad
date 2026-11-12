@@ -8,7 +8,7 @@ import { foldService } from '@codemirror/language';
 import { settings } from '../app/settings';
 import type { PageIndex } from '../engine/client';
 import { FLAG_CAUSE, FLAG_ENTRY, FLAG_FRAME } from '../engine/logparse';
-import { PRESET_RULES, compileRules, findMarks, type CompiledRule, type UserRule } from '../engine/highlights';
+import { PRESET_RULES, compileRules, findMarks, statementSegments, statementsOn, type CompiledRule, type UserRule } from '../engine/highlights';
 
 export const setLogIndex = StateEffect.define<PageIndex | null>();
 /** 1 = shown; null clears the filter. */
@@ -136,6 +136,8 @@ export type HighlightRule = UserRule;
 
 const MARKS = [...Array.from({ length: 6 }, (_, i) => Decoration.mark({ class: `tp-hl tp-hl-${i}` })), Decoration.mark({ class: 'tp-filter-hit' })];
 
+const SQL_MARK = Decoration.mark({ class: 'tp-sql' });
+
 /** The log filter's text, marked in the lines it shows. Set by app/logs.ts. */
 let filterMark: CompiledRule | null = null;
 export function setFilterMark(rule: CompiledRule | null): void {
@@ -170,17 +172,27 @@ const highlightRules = ViewPlugin.fromClass(
       const isLog = view.state.field(logIndexField).index !== null;
       // The filter's matches first: they say why a line is shown.
       const rules = isLog && filterMark ? [filterMark, ...currentRules(true)] : currentRules(isLog);
-      if (!rules.length) return Decoration.none;
+      const doc = view.state.doc;
+      const visible: number[] = [];
+      for (const range of view.visibleRanges) for (let n = doc.lineAt(range.from).number; n <= doc.lineAt(range.to).number; n++) visible.push(n - 1);
+      // Whole SQL statements, read entry by entry (they may span lines).
+      let sql = new Map<number, { from: number; to: number }[]>();
+      if (isLog && statementsOn(settings.value.presetRules)) {
+        const { index, fresh } = view.state.field(logIndexField);
+        const flags = index && fresh && index.flags.length === doc.lines ? index.flags : null;
+        sql = statementSegments(visible, doc.lines, (i) => doc.line(i + 1).text, (i) => (flags ? !!(flags[i] & FLAG_ENTRY) : true));
+      }
+      if (!rules.length && !sql.size) return Decoration.none;
       const b = new RangeSetBuilder<Decoration>();
-      for (const range of view.visibleRanges) {
-        // Line by line: a match never runs across lines, and the cost stays with what is on screen.
-        let pos = range.from;
-        while (pos <= range.to) {
-          const line = view.state.doc.lineAt(pos);
-          const text = line.text.length > 20_000 ? line.text.slice(0, 20_000) : line.text;
-          for (const m of findMarks(text, rules, 400)) b.add(line.from + m.from, line.from + m.to, MARKS[m.color]);
-          pos = line.to + 1;
-        }
+      for (const i of visible) {
+        // Line by line: the cost stays with what is on screen.
+        const line = doc.line(i + 1);
+        const text = line.text.length > 20_000 ? line.text.slice(0, 20_000) : line.text;
+        const here: { from: number; to: number; deco: Decoration }[] = (sql.get(i) ?? []).map((s) => ({ ...s, deco: SQL_MARK }));
+        for (const m of findMarks(text, rules, 400)) here.push({ from: m.from, to: m.to, deco: MARKS[m.color] });
+        // The statement's tint goes underneath: outer (longer) marks first.
+        here.sort((x, y) => x.from - y.from || y.to - x.to);
+        for (const h of here) b.add(line.from + h.from, line.from + h.to, h.deco);
       }
       return b.finish();
     }

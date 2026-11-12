@@ -2,8 +2,10 @@
 // same moment), by line number, or not at all. Any pane can lead.
 import { onPaneScroll, scrollTabToLine, topLineOf } from '../editor/editor';
 import { lineAtTime, timeAtLine } from '../engine/timesync';
-import { indexFor } from './logs';
+import { effect } from '@preact/signals';
+import { indexFor, logInfo } from './logs';
 import { isSplit, visibleTabs } from './panes';
+import { activeId } from './state';
 import { settings } from './settings';
 
 /** Panes we moved ourselves: their scroll events must not lead in turn. */
@@ -34,6 +36,18 @@ function follow(source: number): void {
 }
 
 export function initPaneSync(): void {
+  // A log that finishes parsing after you scrolled another pane: line it up now, not at the next scroll.
+  let ready = '';
+  effect(() => {
+    const info = logInfo.value;
+    const ids = visibleTabs.value;
+    const now = ids.map((id) => (info[id]?.status === 'ready' ? info[id].version : 0)).join(',');
+    if (now === ready) return;
+    ready = now;
+    if (!isSplit.peek() || settings.peek().syncScroll === 'off') return;
+    const lead = activeId.peek();
+    if (lead != null) requestAnimationFrame(() => follow(lead));
+  });
   onPaneScroll((id) => {
     if (pending.has(id)) return;
     pending.add(id);

@@ -2,7 +2,7 @@
 
 Browser-only text editor for backend debugging (logs, tables, big files). Static hosting on GitHub Pages under `/tracepad/`, plus a single-file build that must work inside a sandboxed cross-origin iframe. No backend, no telemetry, no network calls after load.
 
-The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. All nine milestones are shipped; 1.1.0 is the current version. Later changes are fixes and requests, each shipped as its own version.
+The approved plan and milestone list live in `README.md` ("Planned") and `CHANGELOG.md`. All nine milestones are shipped; 1.1.1 is the current version. Later changes are fixes and requests, each shipped as its own version.
 
 ## Stack
 
@@ -125,5 +125,6 @@ Release checklist (every change ships as a version):
 - **Lazy pieces**: `src/app/markdown.ts` (markdown-it, DOMPurify) and `src/ui/Compare.tsx` (@codemirror/merge) are dynamic imports, loaded on first use; the service worker precaches their chunks and the single-file build inlines them. Keep anything they need at start-up out of those files (the compare picker lives in `ComparePicker.tsx` for that reason).
 - **Nothing behind the text may be opaque**: CodeMirror draws the selection in a layer behind the lines, so any opaque line background (the active line, own-package stack frames) hides the selection on that line. Line backgrounds use `color-mix(... transparent)`; `logs.spec.ts` checks their alpha.
 - **Highlight rules** (`src/engine/highlights.ts`, pure, unit-tested): `PRESET_RULES` (ready-made, on/off stored in `settings.presetRules`, logs only) and the user's rules compile together (user rules first, they win overlaps); `findMarks` returns non-overlapping marks per line and is shared by the editor (`log.ts`) and the large-file viewer. The filter's own marks (`filterRule`, colour `FILTER_MARK`) go first. Class names: `.tp-preset` already belongs to the Extract panel; the ready-made rules use `.tp-ready*`.
+- **SQL statements** are a ready-made rule of `kind: 'statement'`: not a line rule but `findStatements` over a whole log entry (`statementSegments` walks to the entry start and end with the index flags, up to 300 lines, and returns per-line pieces). Each start shape needs more than a keyword so prose does not match; the rest stops at `;`, an unindented line, a stack frame or the next entry. Drawn as `.tp-sql` (a light tint) under the other marks: in the editor as nested mark decorations, in the large-file viewer by `pieces()` wrapping the marks inside.
 - **Selected-word marks** (`src/editor/wordmatches.ts`) replace CodeMirror's `highlightSelectionMatches`, whose "whole words" option still treats `2026-03-14T10` as a word.
 - **No Copilot integration**: it was built for 0.8 and removed before release at the owner's request (no button, no prompt hand-off, no secret masking code). Do not add it back unless asked.
