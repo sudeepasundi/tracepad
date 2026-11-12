@@ -2,6 +2,10 @@
 
 What changed in each release, written for people who use Tracepad.
 
+## 1.1.2
+
+- Selecting text outlines every other place it appears again, not only single words: names with punctuation such as order-service, HikariPool-1 or status=503, and timestamps too. 1.1.0 had limited this to single words, which left most log values unmarked. A match must be whole where it starts or ends with a letter or digit, so selecting "order" does not mark the start of "orders", and part of a word (Hikari out of HikariPool) marks nothing.
+
 ## 1.1.1
 
 - The SQL rule now marks whole statements, not just the keyword, and is on from the start. It finds `select … from`, `insert into`, `update … set`, `delete from`, `merge into` and `with … as (select`, in any case, so Hibernate's lower-case SQL is covered (1.1.0 only matched upper-case keywords). A statement runs to a semicolon or the end of its log entry.

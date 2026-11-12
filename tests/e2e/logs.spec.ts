@@ -464,22 +464,50 @@ test.describe('selection and highlighting', () => {
     await expect(line).toHaveClass(/cm-activeLine/);
   });
 
-  test('a double-clicked word is outlined elsewhere; part of a word or a timestamp marks nothing', async ({ page }) => {
+  test('the selected text is outlined wherever else it appears: words, names with punctuation, timestamps; not part of a word', async ({ page }) => {
     await openSample(page);
     await logReady(page);
-    await page.locator('.cm-line', { hasText: 'HikariPool-1 - Starting' }).first().getByText('INFO').dblclick();
-    await expect(page.locator('.cm-selectionMatch').first()).toBeVisible();
-    expect(await page.locator('.cm-selectionMatch').count()).toBeGreaterThan(3);
+    const line = page.locator('.cm-line', { hasText: 'HikariPool-1 - Starting' }).first();
+    /** Selects `length` characters starting at `text` in that line, with the keyboard. */
+    const select = async (text: string, length = text.length, skip = 0) => {
+      const full = (await line.textContent()) ?? '';
+      const at = full.indexOf(text) + skip;
+      expect(at, text).toBeGreaterThanOrEqual(skip);
+      await line.click({ position: { x: 2, y: 5 } });
+      await page.keyboard.press('Home');
+      for (let i = 0; i < at; i++) await page.keyboard.press('ArrowRight');
+      for (let i = 0; i < length; i++) await page.keyboard.press('Shift+ArrowRight');
+      await expect(page.locator('.cm-selectionBackground').first()).toBeVisible();
+    };
+    const outlined = () => page.locator('.cm-selectionMatch:not(.cm-selectionMatch-main)').allTextContents();
+
+    // A word, by double-click.
+    await line.getByText('INFO').dblclick();
+    await expect.poll(async () => (await outlined()).length).toBeGreaterThan(3);
+    expect(new Set(await outlined())).toEqual(new Set(['INFO']));
+    // Outlined, never filled like the selection.
     const style = await page.locator('.cm-selectionMatch:not(.cm-selectionMatch-main)').first().evaluate((el) => ({ bg: getComputedStyle(el).backgroundColor, ring: getComputedStyle(el).boxShadow }));
     expect(alphaOf(style.bg)).toBe(0);
     expect(style.ring).toContain('inset');
-    // Selecting the start of a timestamp (not a whole word) marks nothing else.
-    const ts = page.locator('.cm-line', { hasText: 'HikariPool-1 - Starting' }).first();
-    const t = await box(ts);
-    await ts.click({ position: { x: 2, y: t.height / 2 } });
-    await page.keyboard.press('Home');
-    for (let i = 0; i < 13; i++) await page.keyboard.press('Shift+ArrowRight');
-    await expect(page.locator('.cm-selectionBackground').first()).toBeVisible();
+
+    // A name with a hyphen.
+    await select('order-service');
+    await expect.poll(async () => (await outlined()).length).toBeGreaterThan(5);
+    expect(new Set(await outlined())).toEqual(new Set(['order-service']));
+
+    // The start of a timestamp.
+    await select('2026-03-14T10', 13);
+    await expect.poll(async () => (await outlined()).length).toBeGreaterThan(5);
+    expect(new Set(await outlined())).toEqual(new Set(['2026-03-14T10']));
+
+    // "order" alone marks "order" where it stands as a word, never the start of "orders".
+    await select('order-service', 5);
+    await expect.poll(async () => (await outlined()).length).toBeGreaterThan(5);
+    const glued = await page.locator('.cm-selectionMatch').evaluateAll((els) => els.filter((e) => /^[A-Za-z0-9_]/.test(e.nextSibling?.textContent ?? '')).length);
+    expect(glued).toBe(0);
+
+    // Part of a word: "Hikari" out of "HikariPool" marks nothing.
+    await select('HikariPool-1 - Starting', 6);
     await expect(page.locator('.cm-selectionMatch')).toHaveCount(0);
   });
 
